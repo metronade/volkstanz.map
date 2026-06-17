@@ -120,9 +120,9 @@ services:
       ADMIN_PATH: ${ADMIN_PATH}
       NODE_ENV: production
       HOST: 0.0.0.0
-      PORT: 8080
+      PORT: 8095
     expose:
-      - "8080"
+      - "8095"
     networks: [web, backend]
 
   # ─────────────────────────────────────────────────────────────────────
@@ -138,7 +138,7 @@ services:
       - cms
     environment:
       ADMIN_PATH: ${ADMIN_PATH}
-      WEB_UPSTREAM: web:8080
+      WEB_UPSTREAM: web:8095
       CMS_UPSTREAM: cms:8055
     ports:
       - "${EXPOSED_PORT:-80}:80"
