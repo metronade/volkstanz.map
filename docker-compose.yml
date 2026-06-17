@@ -85,9 +85,13 @@ services:
       AUTH_MAX_LOGIN_ATTEMPTS: ${AUTH_MAX_LOGIN_ATTEMPTS}
 
       # Routing – Admin unter ${ADMIN_PATH} erreichbar.
-      # PUBLIC_URL bleibt leer (relative URLs), weil Nginx den ADMIN_PATH-
-      # Prefix vor dem Forwarding abstreift (siehe router-Template).
-      PUBLIC_URL: ${PUBLIC_URL_BASE:-}
+      # Nginx streift den ADMIN_PATH-Prefix VOR dem Forwarding ab (siehe
+      # router-Template), Directus sieht intern nur /admin, /api, /assets.
+      # Damit Directus' generierte URLs in Responses (Asset-Links, API-Calls)
+      # ebenfalls den Prefix bekommen, muss PUBLIC_URL den ADMIN_PATH
+      # enthalten — sonst rufen Browser /admin/assets/foo.js direkt am Root
+      # ab und landen bei Astro (404 → schwarze Admin-Seite).
+      PUBLIC_URL: ${PUBLIC_URL_BASE:-}${ADMIN_PATH}
       ROOT_REDIRECT: /
 
       # Initialer Admin
