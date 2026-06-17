@@ -65,7 +65,12 @@ Mindestens erforderlich:
 - `DIRECTUS_SECRET`, `DIRECTUS_KEY`
 - `DIRECTUS_ADMIN_EMAIL`, `DIRECTUS_ADMIN_PASSWORD`
 - `ADMIN_PATH` (z. B. `/verwaltung`)
-- `PUBLIC_URL_BASE` (z. B. `https://volkstanz.example.org`)
+
+**Lokaler Test:** `PUBLIC_URL_BASE` darf leer bleiben oder auf `http://localhost`
+gesetzt werden. Sitemap & Co. greifen dann auf den Host-Header des Requests
+zurück. Erst für den produktiven Betrieb (mit echter Domain + HTTPS) ist
+`PUBLIC_URL_BASE=https://volkstanz.example.org` Pflicht — sonst generiert die
+Sitemap relative URLs, die Google abweist.
 
 ### 3. Stack starten
 

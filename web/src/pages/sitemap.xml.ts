@@ -21,11 +21,17 @@ const STATIC_PATHS = [
   'datenschutz',
 ];
 
-export const GET: APIRoute = async ({ site }) => {
-  const baseUrl = (site?.toString() ?? process.env.SITE_URL ?? '').replace(/\/$/, '');
-  if (!baseUrl) {
-    return new Response('<!-- SITE_URL not configured -->', { status: 500 });
-  }
+export const GET: APIRoute = async ({ site, request }) => {
+  // Fallback-Reihenfolge: Astro `site` config → SITE_URL env → Host-Header des Requests
+  // (letzteres reicht für lokale Tests ohne PUBLIC_URL_BASE-Konfiguration)
+  const fromConfig = site?.toString() ?? process.env.SITE_URL ?? '';
+  const fromRequest = (() => {
+    try {
+      const u = new URL(request.url);
+      return `${u.protocol}//${u.host}`;
+    } catch { return ''; }
+  })();
+  const baseUrl = (fromConfig || fromRequest).replace(/\/$/, '');
 
   // SEO-Settings abrufen
   const seo = await directusGet<{ data: { sitemap_include_all: boolean } | null }>(
