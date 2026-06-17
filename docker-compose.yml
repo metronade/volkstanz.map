@@ -84,8 +84,10 @@ services:
       AUTH_LOCK_TIME: ${AUTH_LOCK_TIME}
       AUTH_MAX_LOGIN_ATTEMPTS: ${AUTH_MAX_LOGIN_ATTEMPTS}
 
-      # Routing – Admin unter ${ADMIN_PATH} erreichbar
-      PUBLIC_URL: ${PUBLIC_URL_BASE}${ADMIN_PATH}
+      # Routing – Admin unter ${ADMIN_PATH} erreichbar.
+      # PUBLIC_URL bleibt leer (relative URLs), weil Nginx den ADMIN_PATH-
+      # Prefix vor dem Forwarding abstreift (siehe router-Template).
+      PUBLIC_URL: ${PUBLIC_URL_BASE:-}
       ROOT_REDIRECT: /
 
       # Initialer Admin

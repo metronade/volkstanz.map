@@ -42,10 +42,15 @@ server {
 
     # ───────────────────────────────────────────────────────────────────
     # ${ADMIN_PATH}/* → Directus
-    # Direkt durchgereicht — Directus selbst bekommt durch PUBLIC_URL den
-    # korrekten Prefix mit, daher keine Rewrite nötig.
+    # WICHTIG: Nginx stripped den ${ADMIN_PATH}-Prefix VOR dem Forwarding.
+    # Grund: Directus 11 mountet seine Routen stur unter /admin, /api,
+    # /assets — unabhängig von PUBLIC_URL. PUBLIC_URL beeinflusst nur
+    # die URL-Generierung in Responses (z. B. Asset-Links), nicht das
+    # Routing. Ohne den Rewrite bekommt Directus /${ADMIN_PATH}/admin
+    # und antwortet 404.
     # ───────────────────────────────────────────────────────────────────
     location ${ADMIN_PATH}/ {
+        rewrite ^${ADMIN_PATH}/(.*)$ /$1 break;
         proxy_pass         http://vt_cms;
         proxy_http_version 1.1;
         proxy_set_header   Host              $host;
