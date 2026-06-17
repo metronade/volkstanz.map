@@ -1,5 +1,6 @@
 import { defineConfig } from 'astro/config';
 import node from '@astrojs/node';
+import { fileURLToPath } from 'node:url';
 
 // ──────────────────────────────────────────────────────────────────────
 // Astro-Konfiguration für Volkstanz-Map.
@@ -9,7 +10,12 @@ import node from '@astrojs/node';
 //
 // Eine Seite wird *nicht* prerendered, wenn sie `export const prerender = false`
 // setzt. Das gilt für /api/*, /robots.txt, /sitemap.xml.
+//
+// Path-Aliase (z. B. @components, @styles) müssen Vite-seitig bekannt sein –
+// tsconfig.json reicht nur für TypeScript-Typauflösung, nicht für den Build.
 // ──────────────────────────────────────────────────────────────────────
+
+const root = fileURLToPath(new URL('./', import.meta.url));
 
 export default defineConfig({
   output: 'static',
@@ -29,6 +35,15 @@ export default defineConfig({
   },
 
   vite: {
+    resolve: {
+      alias: {
+        '@components': `${root}src/components`,
+        '@layouts':    `${root}src/layouts`,
+        '@styles':     `${root}src/styles`,
+        '@lib':        `${root}src/lib`,
+        '@i18n':       `${root}src/i18n`,
+      },
+    },
     define: {
       'import.meta.env.ADMIN_PATH': JSON.stringify(process.env.ADMIN_PATH || '/verwaltung'),
       'import.meta.env.DIRECTUS_URL': JSON.stringify(process.env.DIRECTUS_URL || 'http://cms:8055'),
