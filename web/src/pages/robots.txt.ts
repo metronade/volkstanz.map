@@ -1,35 +1,34 @@
 /**
- * GET /robots.txt
- *
- * Liest die robots.txt aus der `seo_settings`-Tabelle (Admin editierbar)
- * und liefert sie aus. Fallback falls Directus nicht erreichbar: ein
- * sicheres Standard-Set.
+ * GET /robots.txt — Proxy an Payload /api/robots
  */
 import type { APIRoute } from 'astro';
-import { directusGet } from '@lib/directus';
+import { payloadBase } from '@lib/payload';
 
 export const prerender = false;
 
-const FALLBACK = `User-agent: *
+export const GET: APIRoute = async () => {
+  const fallback = `User-agent: *
 Disallow: /admin
 Disallow: /*/admin
 
 Sitemap: /sitemap.xml
 `;
 
-export const GET: APIRoute = async () => {
-  const data = await directusGet<{ data: { robots_txt: string } | null }>('/items/seo_settings', {
-    single: '1',
-    fields: 'robots_txt',
-  });
+  try {
+    const res = await fetch(`${payloadBase()}/api/robots`);
+    if (res.ok) {
+      return new Response(await res.text(), {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'public, max-age=300',
+        },
+      });
+    }
+  } catch { /* fallback */ }
 
-  const robots = data?.data?.robots_txt || FALLBACK;
-
-  return new Response(robots, {
+  return new Response(fallback, {
     status: 200,
-    headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'public, max-age=300',
-    },
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
   });
 };

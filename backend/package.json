@@ -1,0 +1,27 @@
+{
+  "name": "volkstanz-backend",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "payload run",
+    "build": "payload build",
+    "start": "node dist/server.js",
+    "migrate": "payload migrate",
+    "seed": "node dist/seed.js"
+  },
+  "dependencies": {
+    "@payloadcms/db-postgres": "^3.10.0",
+    "@payloadcms/richtext-lexical": "^3.10.0",
+    "@payloadcms/storage-local": "^3.10.0",
+    "otplib": "^12.0.1",
+    "payload": "^3.10.0",
+    "pg": "^8.13.1",
+    "sharp": "^0.33.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.11.10",
+    "typescript": "^5.7.2"
+  }
+}

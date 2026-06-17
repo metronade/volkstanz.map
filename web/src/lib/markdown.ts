@@ -7,9 +7,9 @@
  * Reicht für rechtliche Seiten / Erklärtexte vollkommen aus.
  * Für komplexere Layouts: im Admin-UI HTML erlaubt sind → als Roh-HTML gespeichert.
  *
- * **Sicherheit:** Eingaben kommen aus Directus (authentifiziert). Wir erlauben
+ * **Sicherheit:** Eingaben kommen aus Payload CMS (authentifiziert). Wir erlauben
  * absichtlich KEIN rohes HTML im Markdown-Input. Wer HTML braucht, verwendet
- * das separate HTML-Feld in Directus und reichert es via Wrapper an.
+ * das separate Rich-Text-Feld (Lexical) in Payload.
  */
 
 export function renderMarkdown(md: string): string {
@@ -94,4 +94,62 @@ function inline(s: string): string {
       '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
     // code `…`
     .replace(/`([^`]+)`/g, '<code>$1</code>');
+}
+
+/**
+ * Konvertiert Payloads Lexical-Rich-Text in das Markdown-Subset,
+ * das renderMarkdown() versteht. Sehr vereinfacht.
+ */
+export function richTextToMarkdown(lexical: any): string {
+  if (!lexical || typeof lexical !== 'object') return '';
+  const out: string[] = [];
+  const walk = (node: any) => {
+    if (!node) return;
+    if (node.type === 'root' && Array.isArray(node.children)) {
+      node.children.forEach(walk);
+      return;
+    }
+    if (node.type === 'paragraph') {
+      const text = (node.children || [])
+        .map((c: any) => inlineText(c))
+        .join('');
+      out.push(text);
+      out.push('');
+      return;
+    }
+    if (node.type === 'heading') {
+      const level = node.tag === 'h1' ? 1 : node.tag === 'h2' ? 2 : 3;
+      const text = (node.children || []).map((c: any) => inlineText(c)).join('');
+      out.push(`${'#'.repeat(level + 1)} ${text}`);
+      out.push('');
+      return;
+    }
+    if (node.type === 'list' && Array.isArray(node.listType)) {
+      node.listType.forEach((item: any) => walk(item));
+      return;
+    }
+    if (node.type === 'listitem') {
+      const text = (node.children || [])
+        .flatMap((c: any) => (c.children ? c.children.map(inlineText) : [inlineText(c)]))
+        .join('');
+      out.push(`- ${text}`);
+      return;
+    }
+  };
+  const inlineText = (c: any): string => {
+    if (!c) return '';
+    if (c.type === 'text') {
+      let t = c.text || '';
+      if (c.format === 1) t = `*${t}*`;
+      if (c.format === 2) t = `**${t}**`;
+      return t;
+    }
+    if (c.type === 'link') {
+      const inner = (c.children || []).map(inlineText).join('');
+      return `[${inner}](${c.url || ''})`;
+    }
+    return '';
+  };
+  walk(lexical);
+  return out.join('\n').trim();
 }

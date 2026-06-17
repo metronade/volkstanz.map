@@ -46,7 +46,7 @@ export default defineConfig({
     },
     define: {
       'import.meta.env.ADMIN_PATH': JSON.stringify(process.env.ADMIN_PATH || '/verwaltung'),
-      'import.meta.env.DIRECTUS_URL': JSON.stringify(process.env.DIRECTUS_URL || 'http://cms:8055'),
+      'import.meta.env.PAYLOAD_URL': JSON.stringify(process.env.PAYLOAD_URL || 'http://cms:3000'),
       'import.meta.env.PUBLIC_API_BASE': JSON.stringify(process.env.PUBLIC_API_BASE || '/verwaltung'),
     },
   },

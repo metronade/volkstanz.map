@@ -2,45 +2,32 @@
 import Base from '@layouts/Base.astro';
 import Map from '@components/Map.astro';
 import { t, localeFromPath, type Locale, localizedPath } from '@i18n/index';
-import { directusGet, assetUrl } from '@lib/directus';
+import { payloadGet, assetUrl, type Group, type PayloadResult } from '@lib/payload';
 import { renderMarkdown } from '@lib/markdown';
-import type { Group } from '@lib/types';
 
 export async function getStaticPaths() {
-  // Alle veröffentlichten Gruppen für statische Pfade
-  const groups = await directusGet<{ data: Pick<Group, 'slug'>[] }>(
-    '/items/groups',
-    {
-      filter: JSON.stringify({ status: { _eq: 'published' } }),
-      fields: 'slug',
-      limit: '5000',
-    },
-  );
-  const slugs = (groups?.data ?? []).map((g) => g.slug);
+  const groups = await payloadGet<PayloadResult<Pick<Group, 'slug'>>>('/api/groups', {
+    where: JSON.stringify({ status: { equals: 'published' } }),
+    limit: '5000',
+  });
+  const slugs = (groups?.docs ?? []).map((g) => g.slug);
   return slugs.map((slug) => ({ params: { slug }, props: { slug } }));
 }
 
 const { slug } = Astro.props as { slug: string };
 const locale: Locale = localeFromPath(Astro.url.pathname);
 
-// Vollständige Gruppe laden
-const group = await directusGet<{ data: Group | null }>(
-  '/items/groups',
-  {
-    filter: JSON.stringify({ slug: { _eq: slug }, status: { _eq: 'published' } }),
-    single: '1',
-    fields: [
-      'id','slug','name','founded_year','website','email','phone','city','region','country',
-      'translations.*','images.*','contacts.*',
-    ].join(','),
-  },
-);
+const result = await payloadGet<PayloadResult<Group>>('/api/groups', {
+  where: JSON.stringify({ and: [
+    { slug: { equals: slug } },
+    { status: { equals: 'published' } },
+  ]}),
+  limit: '1',
+});
 
-if (!group?.data) {
-  return Astro.redirect('/404');
-}
+const g = result?.docs?.[0];
+if (!g) return Astro.redirect('/404');
 
-const g = group.data;
 const tr = g.translations?.find((t) => t.lang === locale) ?? g.translations?.[0];
 const heroImage = g.images?.find((i) => i.kind === 'hero' && i.is_primary)
   ?? g.images?.find((i) => i.is_primary)
@@ -51,7 +38,7 @@ const altText = locale === 'en' ? (heroImage?.alt_text_en ?? heroImage?.alt_text
 ---
 
 <Base title={g.name} description={tr?.description_md?.slice(0, 160) ?? g.name}
-      ogImage={heroImage ? assetUrl(heroImage.asset_id, { width: 1200 }) : undefined}>
+      ogImage={heroImage ? assetUrl(heroImage.asset, { size: 'og' }) : undefined}>
   <article class="group">
     <div class="container">
       <a href={localizedPath('', locale)} class="group__back">
@@ -73,7 +60,7 @@ const altText = locale === 'en' ? (heroImage?.alt_text_en ?? heroImage?.alt_text
           {heroImage && (
             <img
               class="group__hero"
-              src={assetUrl(heroImage.asset_id, { width: 1000, quality: 80 })}
+              src={assetUrl(heroImage.asset, { size: 'hero' })}
               alt={altText ?? g.name}
               loading="eager"
             />
@@ -93,8 +80,8 @@ const altText = locale === 'en' ? (heroImage?.alt_text_en ?? heroImage?.alt_text
           {g.images && g.images.length > 1 && (
             <section class="group__gallery">
               {g.images.filter((i) => i !== heroImage).slice(0, 8).map((img) => (
-                <a href={assetUrl(img.asset_id)} target="_blank" rel="noopener">
-                  <img src={assetUrl(img.asset_id, { width: 400, quality: 70 })}
+                <a href={assetUrl(img.asset)} target="_blank" rel="noopener">
+                  <img src={assetUrl(img.asset, { size: 'card' })}
                        alt={locale === 'en' ? (img.alt_text_en ?? img.alt_text_de ?? '') : (img.alt_text_de ?? '')}
                        loading="lazy" />
                 </a>

@@ -7,10 +7,9 @@
 
 | Schicht | Wahl | Warum |
 |---|---|---|
-| Backend / Admin-UI / API | **Directus 11** | Headless CMS, liefert TOTP-2FA, RBAC, Audit-Log, File-Library, i18n-Translation-Fields out-of-the-box |
+| Backend / Admin-UI / API | **Payload CMS 3** (Node.js, TypeScript) | Schema-in-Code, REST + Local-API, RBAC, Lexical-Rich-Text, eigene Hooks/Endpoints |
 | Frontend | **Astro 5** + Node-Adapter | SSR für SEO + 0 KB JS by default, Leaflet als Insel |
-| Datenbank | **PostgreSQL 16 + PostGIS 3.4** | First-class Geo-Unterstützung, GIST-Index, `ST_SnapToGrid` für Privacy-Rundung |
-| Cache / Rate-Limiter | **Redis 7** | Sessions, Cache, Brute-Force-Schutz |
+| Datenbank | **PostgreSQL 16 + PostGIS 3.4** | First-class Geo-Unterstützung, GIST-Index, `MakePoint`-Generated-Column für Privacy-Rundung |
 | Router | **Nginx 1.27** | Dynamischer Admin-Pfad, Path-Routing zwischen CMS & Web |
 
 ## Architektur-Überblick
@@ -23,21 +22,22 @@
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  router (nginx) — hört auf :80                               │
-│   ├── ${ADMIN_PATH}/*  → cms:8055 (Directus, gleicher Pfad) │
+│   ├── ${ADMIN_PATH}/*  → cms:3000 (Payload Admin + API)     │
 │   └── /                → web:8095 (Astro SSR)               │
 └──────┬─────────────────────────────────────────┬────────────┘
        │                                         │
        ▼                                         ▼
 ┌──────────────┐                          ┌──────────────────┐
-│ cms (Directus│  ← /directus/uploads     │ web (Astro Node) │
-│     :8055)   │  ← schema (Reflection)   │   :8095          │
+│ cms (Payload │  ← /storage (Media)      │ web (Astro Node) │
+│     :3000)   │  ← /api/* (REST)         │   :8095          │
 └──────┬───────┘                          └────────┬─────────┘
        │                                           │
-       ▼                                           ▼
-┌────────────────────────────┐            ┌──────────────────┐
-│ db (Postgres+PostGIS)      │            │ redis            │
-│   :5432                    │            │   :6379          │
-└────────────────────────────┘            └──────────────────┘
+       └──────────────┬────────────────────────────┘
+                      ▼
+              ┌────────────────────┐
+              │ db (Postgres+PostGIS) │
+              │   :5432              │
+              └────────────────────┘
 ```
 
 ## Schnellstart
@@ -55,16 +55,15 @@ cp .env.example .env
 In `.env` mindestens diese Werte setzen (mit echten Zufallsstrings):
 
 ```bash
-# Beispiel für starke Secrets
 openssl rand -hex 24   # → POSTGRES_PASSWORD
-openssl rand -hex 24   # → DIRECTUS_SECRET, DIRECTUS_KEY
+openssl rand -hex 24   # → PAYLOAD_SECRET
 ```
 
 Mindestens erforderlich:
-- `POSTGRES_PASSWORD`, `REDIS_PASSWORD`
-- `DIRECTUS_SECRET`, `DIRECTUS_KEY`
-- `DIRECTUS_ADMIN_EMAIL`, `DIRECTUS_ADMIN_PASSWORD`
-- `ADMIN_PATH` (z. B. `/verwaltung`)
+- `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
+- `PAYLOAD_SECRET`
+- `INITIAL_ADMIN_EMAIL`, `INITIAL_ADMIN_PASSWORD`
+- `ADMIN_PATH` (z. B. `/verwaltung` oder ein zufälliger Token-Pfad)
 
 **Lokaler Test:** `PUBLIC_URL_BASE` darf leer bleiben oder auf `http://localhost`
 gesetzt werden. Sitemap & Co. greifen dann auf den Host-Header des Requests
@@ -75,79 +74,83 @@ Sitemap relative URLs, die Google abweist.
 ### 3. Stack starten
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 docker compose logs -f --tail=50
 ```
 
-Beim ersten Start initialisiert Directus die Schema-Migration (kann 1–2 Min dauern).
+Beim ersten Start:
+1. Postgres legt die Hilfs-Tabelle `groups_geom_public` (PostGIS) an.
+2. Payload migriert das Schema automatisch (`prod: true`, `push: false`).
+3. Der Seed legt initialen Admin + Consent v1 + SEO-Singleton an, falls leer.
 
-### 4. Directus-Bootstrap
+Das dauert typischerweise 30–60 Sekunden.
 
-Nach dem ersten Start:
+### 4. Admin-Login
 
-1. Admin-UI unter `${PUBLIC_URL_BASE}${ADMIN_PATH}/` aufrufen
-   (z. B. `https://volkstanz.example.org/verwaltung/`)
-2. Mit `DIRECTUS_ADMIN_EMAIL` / `DIRECTUS_ADMIN_PASSWORD` einloggen
+1. Admin-UI unter `${PUBLIC_URL_BASE}${ADMIN_PATH}/admin` aufrufen
+   (z. B. `https://volkstanz.example.org/verwaltung/admin`)
+2. Mit `INITIAL_ADMIN_EMAIL` / `INITIAL_ADMIN_PASSWORD` einloggen
 3. **Sofort Passwort ändern**
-4. **TOTP-2FA aktivieren** (Profile → Security → TOTP → QR-Code scannen)
-5. Im Schema-Reiter sollten automatisch alle Tabellen als Collections erscheinen
+4. **TOTP-2FA aktivieren** via `POST ${ADMIN_PATH}/api/users/me/totp/setup`
+   (ggf. über ein kurzes Admin-UI-Plugin; siehe `backend/src/endpoints/totp-setup.ts`)
 
-### 5. Directus-Policy für Public-Submissions
-
-Direkt nach dem Setup eine Sache einstellen, damit `/api/submit` funktioniert:
-
-- **Settings → Roles & Permissions → Public**
-- **Collection `groups`**: Create = ✓
-- **Field Permissions für Create**: nur `status = 'pending'` zulassen
-  (Field-Validation: `{ "status": { "_eq": "pending" } }`)
-- Alle anderen Felder freigeben (außer `moderated_by`, `moderated_at`)
-- **Create-Preset**: `status = pending` erzwingen
-
-Das verhindert, dass öffentliche Submissions sofort als `published` landen.
+Public-Submissions landen automatisch als `status = 'pending'` — der Server
+erzwingt diesen Status unabhängig vom Client (`backend/src/endpoints/submit-group.ts`).
 
 ## Verzeichnisstruktur
 
 ```
 volkstanz.map/
-├── docker-compose.yml           # 5 Services: db, redis, cms, web, router
+├── docker-compose.yml           # 4 Services: db, cms, web, router
 ├── .env.example                 # Template für Secrets
 ├── .gitignore
 │
 ├── infra/
 │   ├── db/init/                 # Postgres-Bootstrap
-│   │   ├── 00-extensions.sql    # postgis, pgcrypto, pg_trgm
-│   │   ├── 10-core-tables.sql   # groups, audit_logs, cms_content, seo_settings …
-│   │   └── 20-seed.sql          # Rollen, Consent v1, SEO-Singleton
-│   ├── cms/extensions/          # Directus-Extensions (Hooks, Endpoints)
+│   │   ├── 00-extensions.sql    # postgis, pgcrypto, pg_trgm, btree_gist
+│   │   └── 05-payload-helpers.sql # groups_geom_public (GIST-indexed)
 │   └── router/
 │       └── default.conf.template # Nginx-Config mit envsubst für ADMIN_PATH
 │
+├── backend/                     # Payload CMS 3
+│   ├── Dockerfile               # Multi-Stage node:22-alpine + vips
+│   ├── package.json             # Payload 3, postgres-adapter, lexical, otplib
+│   ├── tsconfig.json
+│   └── src/
+│       ├── payload.config.ts    # Schema-in-Code: alle Collections + Endpoints
+│       ├── server.ts            # Standalone-Server-Entry
+│       ├── seed.ts              # Bootstrap: Admin + Consent v1 + SEO-Singleton
+│       ├── access/              # Access-Control (isPublicRead, isAdminOrModerator)
+│       ├── collections/         # Users, Groups, Content, ConsentVersions,
+│       │                        # AuditLogs, SeoSettings, Media
+│       ├── endpoints/           # /submit-group, /public-coords, /stats-summary,
+│       │                        # /robots, /sitemap, /totp-setup|verify|disable
+│       └── hooks/               # snap-geo, audit-change, anonymize-ip
+│
 └── web/                         # Astro-Frontend
     ├── Dockerfile               # Multi-Stage: build → node-runtime
-    ├── astro.config.mjs
+    ├── astro.config.mjs         # vite.resolve.alias für @components, @lib, …
     ├── package.json
     └── src/
         ├── components/          # Header, Footer, Map, SearchBar, CompassRose
         ├── layouts/Base.astro
         ├── lib/
-        │   ├── directus.ts      # API-Wrapper + IP-Hashing
-        │   ├── markdown.ts      # Subset-Renderer für CMS-Texte
-        │   └── types.ts
+        │   ├── payload.ts       # API-Wrapper (payloadGet, assetUrl) + Types
+        │   └── markdown.ts      # Subset-Renderer + Lexical→Markdown
         ├── i18n/                # de.json, en.json, Helper
         ├── pages/
         │   ├── index.astro      # Home mit Karte
-        │   ├── was-ist.astro    # Erklärseite
         │   ├── gruppe-eintragen.astro  # Selbst-Registrierung
         │   ├── impressum.astro
         │   ├── datenschutz.astro
         │   ├── danke.ts         # Submit-Bestätigung
         │   ├── 404.astro
         │   ├── gruppen/[slug].astro  # Gruppenprofil (SSG)
+        │   ├── robots.txt.ts    # Proxy → Payload /api/robots
+        │   ├── sitemap.xml.ts   # Proxy → Payload /api/sitemap
         │   └── api/
-        │       ├── groups.geojson.ts
-        │       └── submit.ts
-        │   robots.txt.ts
-        │   sitemap.xml.ts
+        │       ├── groups.geojson.ts  # FeatureCollection aus Payload
+        │       └── submit.ts          # Proxy → Payload /api/submit-group
         └── styles/
             ├── tokens.css       # Design-Tokens (Farben, Typo, Spacing)
             └── base.css         # Reset, Elemente, Komponenten
@@ -174,32 +177,42 @@ angepasst — definierbar in `tokens.css`.
 
 ## Datenschutz-Features
 
-- **IP-Hashing**: SHA-256 mit täglich wechselndem Salt, kein Klartext-IP in DB
-- **Geometrie-Rundung**: `geom_public` als Generated Column aus `privacy_level`
-- **Consent-Versionierung**: jede Änderung der AGB/DSGVO/KUG wird als neue
-  Version gespeichert; Audit-Log referenziert die jeweils geltende Version
-- **Karte zeigt nur `geom_public`**, nie die Original-Adresse
-- **Kein externes Analytics** (optional: Matomo self-hosted ergänzbar)
-- **Cookie-loses Tracking** — einzige Cookies sind `vt_session`, `vt_locale`,
-  `vt_consent_v` (alle technisch notwendig)
+- **IP-Hashing**: SHA-256 mit täglich wechselndem Salt, kein Klartext-IP in DB.
+  Prefix (/24 für IPv4, /48 für IPv6) wird separat gespeichert für Rate-Limiting.
+- **Geometrie-Rundung**: `groups_geom_public` als Hilfstabelle mit MakePoint(lng,lat)
+  und GIST-Index. Rundungs-Level hängt vom `privacy_level` der Gruppe ab:
+  - `exact` (~100 m), `neighborhood` (~500 m), `city` (~2 km), `region` (~10 km)
+- **Consent-Versionierung**: jede Änderung der AGB/DSGVO/KUG wird als neue Version
+  in `consent_versions` gespeichert (alte bleiben erhalten). Groups referenzieren
+  die jeweils geltende Version.
+- **Karte zeigt nur `groups_geom_public`**, nie die Original-Koordinaten.
+- **Kein externes Analytics**, keine Google Fonts.
+- **Audit-Log** append-only (`audit_logs`) für jede Mutation an Groups.
 
 ## Admin-Ablauf
 
-1. **Submission** kommt via `/api/submit` → `groups.status = 'pending'`
-2. Moderator sieht sie in der View `v_submissions_queue`
-3. Editor → Änderung auf `status = 'published'` setzt automatisch `published_at`
-4. Jede Aktion wird in `audit_logs` mit `actor_id`, `ip_hash`, `diff` protokolliert
-5. Ablehnung erfordert `rejection_reason` (Pflichtfeld in Directus)
+1. **Submission** kommt via `/api/submit` → Proxy → Payload `/api/submit-group`.
+   Ergebnis: `groups.status = 'pending'`, Audit-Log-Eintrag mit `actorType=submitter`.
+2. Moderator sieht Pending-Einträge im Payload-Admin-Filter `status = pending`.
+3. Editor → Änderung auf `status = 'published'` setzt via Hook automatisch
+   `published_at` und schreibt die gerundeten Koordinaten nach `groups_geom_public`.
+4. Jede Aktion wird via `audit-change`-Hook mit IP-Hash + Prefix protokolliert.
+5. Ablehnung erfordert `rejection_reason` (Pflichtfeld bei `status = rejected`).
 
-## Erweiterungs-Punkte
+## Wichtige Endpoints
 
-- **Custom Directus Endpoints** in `infra/cms/extensions/endpoints/`:
-  - `coords/public.ts` — liefert `{id, lng, lat}` für `geom_public` (noch zu implementieren)
-  - `stats/summary.ts` — Statistik für Homepage-Hero
-- **Custom Hooks** in `infra/cms/extensions/hooks/`:
-  - `audit-on-group-change.ts` — automatische Audit-Log-Einträge
-- **Multi-Tile-Quellen**: MapTiler / Stadia Maps / eigener Tile-Server in
-  `web/src/components/Map.astro` austauschbar
+**Public:**
+- `GET /api/groups?where=…` — Payload-Standard-Query
+- `GET /api/public-coords` — gerundete Koordinaten (PostGIS) für Karte
+- `GET /api/groups.geojson` (Astro) — FeatureCollection für Leaflet
+- `GET /api/stats-summary` — Gruppen-/Länder-Statistik für Hero
+- `POST /api/submit-group` — Public-Submission (erzwingt `status=pending`)
+- `GET /api/robots` / `/api/sitemap` — aus `seo_settings` generiert
+
+**Auth (Admin):**
+- `POST /api/users/me/totp/setup` — generiert TOTP-Secret
+- `POST /api/users/me/totp/verify` — aktiviert 2FA
+- `POST /api/users/me/totp/disable` — deaktiviert 2FA (erfordert Passwort)
 
 ## Backup
 
@@ -207,9 +220,9 @@ angepasst — definierbar in `tokens.css`.
 # Postgres dump
 docker compose exec db pg_dump -U volkstanz volkstanz > backup-$(date +%F).sql
 
-# Directus uploads
+# Payload Media-Storage
 docker compose run --rm -v $(pwd)/backup:/backup alpine \
-  cp -r /var/lib/docker/volumes/volkstanz_cms_uploads/_data /backup/
+  cp -r /var/lib/docker/volumes/volkstanz_cms_storage/_data /backup/
 ```
 
 ## Lizenz

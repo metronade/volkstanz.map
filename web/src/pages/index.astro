@@ -4,17 +4,16 @@ import Map from '@components/Map.astro';
 import SearchBar from '@components/SearchBar.astro';
 import CompassRose from '@components/CompassRose.astro';
 import { t, localeFromPath, type Locale, localizedPath } from '@i18n/index';
-import { directusGet } from '@lib/directus';
+import { payloadGet } from '@lib/payload';
 
 const locale: Locale = localeFromPath(Astro.url.pathname);
 
 // Statistik-Zahlen für den Hero-Bereich
-const stats = await directusGet<{ data: { groups: number; countries: number }[] }>(
-  '/custom/stats/summary',
-  {},
+const stats = await payloadGet<{ data: { groups: number; countries: number; regions: number } }>(
+  '/api/stats-summary',
 );
-const groupsCount = stats?.data?.[0]?.groups ?? 0;
-const countriesCount = stats?.data?.[0]?.countries ?? 0;
+const groupsCount = stats?.data?.groups ?? 0;
+const countriesCount = stats?.data?.countries ?? 0;
 ---
 
 <Base>

@@ -1,19 +1,18 @@
 ---
 import Base from '@layouts/Base.astro';
-import { directusGet } from '@lib/directus';
+import { payloadGet, type PayloadResult, type ContentEntry } from '@lib/payload';
 import { localeFromPath, type Locale } from '@i18n/index';
 import { renderMarkdown } from '@lib/markdown';
 
 const locale: Locale = localeFromPath(Astro.url.pathname);
 
-const content = await directusGet<{ data: { body_md_de?: string; body_md_en?: string } | null }>(
-  '/items/cms_content',
-  {
-    filter: JSON.stringify({ key: { _eq: 'legal.imprint' } }),
-    single: '1',
-    fields: 'body_md_de,body_md_en',
-  },
-);
+const content = await payloadGet<PayloadResult<ContentEntry>>('/api/content', {
+  where: JSON.stringify({ key: { equals: 'legal.imprint' } }),
+  limit: '1',
+});
+
+const entry = content?.docs?.[0];
+const translation = entry?.translations?.find((t) => t.lang === locale);
 
 const fallbackDe = `# Impressum
 
@@ -57,9 +56,9 @@ VAT ID: [if available]
 We are not willing or obliged to participate in dispute resolution proceedings
 before a consumer dispute resolution body.`;
 
-const body = (locale === 'en'
-  ? (content?.data?.body_md_en || fallbackEn)
-  : (content?.data?.body_md_de || fallbackDe));
+const body = translation?.body
+  ? richTextToMarkdown(translation.body)
+  : (locale === 'en' ? fallbackEn : fallbackDe);
 
 const html = renderMarkdown(body);
 ---

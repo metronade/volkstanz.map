@@ -2,7 +2,7 @@
 
 interface ImportMetaEnv {
   readonly ADMIN_PATH: string;
-  readonly DIRECTUS_URL: string;
+  readonly PAYLOAD_URL: string;
   readonly PUBLIC_API_BASE: string;
 }
 

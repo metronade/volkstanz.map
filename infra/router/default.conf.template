@@ -2,7 +2,7 @@
 # ║  Volkstanz-Map – Interner Nginx-Router                                 ║
 # ║                                                                        ║
 # ║ ROUTING-LOGIK:                                                         ║
-# ║   ${ADMIN_PATH}/*  → Directus (CMS + Admin + API unter diesem Pfad)    ║
+# ║   ${ADMIN_PATH}/*  → Payload CMS (Admin + API unter diesem Pfad)       ║
 # ║   /                 → Astro-Frontend (SSR + statische Assets)          ║
 # ║                                                                        ║
 # ║  Diese Datei wird vom nginx-Image via envsubst verarbeitet,            ║
@@ -41,12 +41,12 @@ server {
     real_ip_header X-Real-IP;
 
     # ───────────────────────────────────────────────────────────────────
-    # ${ADMIN_PATH}/* → Directus
+    # ${ADMIN_PATH}/* → Payload CMS
     # WICHTIG: Nginx stripped den ${ADMIN_PATH}-Prefix VOR dem Forwarding.
-    # Grund: Directus 11 mountet seine Routen stur unter /admin, /api,
-    # /assets — unabhängig von PUBLIC_URL. PUBLIC_URL beeinflusst nur
-    # die URL-Generierung in Responses (z. B. Asset-Links), nicht das
-    # Routing. Ohne den Rewrite bekommt Directus /${ADMIN_PATH}/admin
+    # Grund: Payload 3 mountet seine Routen stur unter /admin und /api,
+    # unabhängig von SERVER_URL. SERVER_URL beeinflusst nur die
+    # URL-Generierung in Responses (z. B. Asset-Links), nicht das
+    # Routing. Ohne den Rewrite bekommt Payload /${ADMIN_PATH}/admin
     # und antwortet 404.
     # ───────────────────────────────────────────────────────────────────
     location ${ADMIN_PATH}/ {

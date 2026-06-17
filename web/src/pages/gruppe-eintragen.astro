@@ -1,27 +1,27 @@
 ---
 import Base from '@layouts/Base.astro';
 import { t, localeFromPath, type Locale } from '@i18n/index';
-import { directusGet, assetUrl } from '@lib/directus';
+import { payloadGet, type ConsentVersion, type PayloadResult } from '@lib/payload';
 
 const locale: Locale = localeFromPath(Astro.url.pathname);
 
-// Aktuelle Consent-Versionen laden (Pflicht-Checkboxen)
-const consent = await directusGet<{ data: { type: string; id: string; version: number }[] }>(
-  '/items/consent_versions',
-  {
-    filter: JSON.stringify({ valid_until: { _null: true } }),
-    fields: 'id,type,version',
-    sort: 'version',
-  },
-);
+// Aktuelle Consent-Versionen laden (Pflicht-Checkboxen).
+// Payload liefert nach validUntil sortierbar; wir nehmen die neueste ohne Enddatum.
+const consent = await payloadGet<PayloadResult<ConsentVersion>>('/api/consent_versions', {
+  where: JSON.stringify({ validUntil: { exists: false } }),
+  limit: '50',
+  sort: '-version',
+});
 const latestByType = new Map<string, string>();
-if (consent?.data) {
-  for (const c of consent.data) latestByType.set(c.type, c.id);
+if (consent?.docs) {
+  for (const c of consent.docs) {
+    if (!latestByType.has(c.type)) latestByType.set(c.type, c.id);
+  }
 }
 
-const tosId      = latestByType.get('tos')      ?? '';
-const privacyId  = latestByType.get('privacy')  ?? '';
-const kugId      = latestByType.get('kug')      ?? '';
+const tosId     = latestByType.get('tos')     ?? '';
+const privacyId = latestByType.get('privacy') ?? '';
+const kugId     = latestByType.get('kug')     ?? '';
 ---
 
 <Base title={t('submit.title', locale)}>
@@ -33,7 +33,7 @@ const kugId      = latestByType.get('kug')      ?? '';
         <p class="submit__lead">{t('submit.lead', locale)}</p>
       </header>
 
-      <form class="submit__form" method="POST" action="/api/submit" enctype="multipart/form-data" data-vt-submit>
+      <form class="submit__form" data-vt-submit>
         <!-- ════ Gruppe ════ -->
         <fieldset class="card">
           <legend>{t('submit.section.group', locale)}</legend>
@@ -137,19 +137,16 @@ const kugId      = latestByType.get('kug')      ?? '';
             <input type="checkbox" name="consent_tos" required value={tosId} />
             <span>{t('submit.consent.tos', locale)}</span>
           </label>
-          <input type="hidden" name="consent_tos_v" value={tosId} />
 
           <label class="check">
             <input type="checkbox" name="consent_privacy" required value={privacyId} />
             <span>{t('submit.consent.privacy', locale)}</span>
           </label>
-          <input type="hidden" name="consent_privacy_v" value={privacyId} />
 
           <label class="check">
             <input type="checkbox" name="consent_kug" required value={kugId} />
             <span>{t('submit.consent.kug', locale)}</span>
           </label>
-          <input type="hidden" name="consent_kug_v" value={kugId} />
 
           <label class="check">
             <input type="checkbox" name="consent_branding" />
@@ -295,16 +292,36 @@ const kugId      = latestByType.get('kug')      ?? '';
     });
   });
 
-  // Form: Datei-Upload via Directus Files zuerst, dann JSON-Submit an /api/submit
+  // Form: Bild zuerst via /verwaltung/api/media hochladen, dann JSON-Submit an /api/submit
   const form = document.querySelector<HTMLFormElement>('[data-vt-submit]');
   const errorEl = document.querySelector<HTMLElement>('[data-vt-submit-error]');
 
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    errorEl?.setAttribute('hidden', '');
+    if (errorEl) errorEl.setAttribute('hidden', '');
 
     try {
       const fd = new FormData(form);
+
+      // Bild an Payload media-Collection schicken (Public-Create ist in Media erlaubt)
+      const file = fd.get('image') as File | null;
+      let imageAssetId: string | undefined;
+      if (file && file.size > 0) {
+        const assetFd = new FormData();
+        assetFd.append('file', file);
+        const apiBase = (window as any).__VT_API_BASE__ ?? '/verwaltung';
+        const upRes = await fetch(`${apiBase}/api/media`, {
+          method: 'POST',
+          body: assetFd,
+        });
+        if (upRes.ok) {
+          const upJson = await upRes.json();
+          imageAssetId = upJson?.doc?.id ?? upJson?.id;
+        } else if (upRes.status === 403 || upRes.status === 401) {
+          throw new Error('media_upload_forbidden');
+        }
+      }
+
       const payload: Record<string, unknown> = {
         name: fd.get('name'),
         slug: fd.get('slug'),
@@ -319,26 +336,12 @@ const kugId      = latestByType.get('kug')      ?? '';
         privacy_level: fd.get('privacy_level'),
         description_de: fd.get('description_de') || null,
         rehearsal_times_de: fd.get('rehearsal_times_de') || null,
-        consent_tos_v: fd.get('consent_tos_v'),
-        consent_privacy_v: fd.get('consent_privacy_v'),
-        consent_kug_v: fd.get('consent_kug_v'),
+        consent_tos: fd.get('consent_tos'),
+        consent_privacy: fd.get('consent_privacy'),
+        consent_kug: fd.get('consent_kug'),
         consent_branding: fd.get('consent_branding') === 'on',
       };
-
-      // Bild direkt in Directus hochladen (falls gewählt)
-      const file = fd.get('image') as File | null;
-      if (file && file.size > 0) {
-        const assetFd = new FormData();
-        assetFd.append('file', file);
-        const upRes = await fetch(`${window.__VT_API_BASE__}/files`, {
-          method: 'POST',
-          body: assetFd,
-        });
-        if (upRes.ok) {
-          const upJson = await upRes.json();
-          payload.image_asset_id = upJson?.data?.id;
-        }
-      }
+      if (imageAssetId) payload.image_asset_id = imageAssetId;
 
       const res = await fetch('/api/submit', {
         method: 'POST',
@@ -361,6 +364,6 @@ const kugId      = latestByType.get('kug')      ?? '';
   });
 </script>
 
-<script is:inline define:vars={{ apiBase: (Astro.url.origin + (import.meta.env.PUBLIC_API_BASE || '/verwaltung')) }}>
+<script is:inline define:vars={{ apiBase: (import.meta.env.PUBLIC_API_BASE || '/verwaltung') }}>
   window.__VT_API_BASE__ = apiBase;
 </script>

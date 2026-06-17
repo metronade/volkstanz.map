@@ -23,90 +23,59 @@ services:
     networks: [backend]
 
   # ─────────────────────────────────────────────────────────────────────
-  # Redis – Session-Cache & Rate-Limiter
-  # ─────────────────────────────────────────────────────────────────────
-  redis:
-    image: redis:7-alpine
-    container_name: volkstanz-redis
-    restart: unless-stopped
-    command:
-      - redis-server
-      - --requirepass
-      - ${REDIS_PASSWORD}
-      - --maxmemory
-      - 256mb
-      - --maxmemory-policy
-      - allkeys-lru
-    volumes:
-      - redis_data:/data
-    networks: [backend]
-
-  # ─────────────────────────────────────────────────────────────────────
-  # Directus – Headless CMS, Admin-UI, REST/GraphQL-API
+  # Payload CMS – Admin-UI + REST-API
   # ─────────────────────────────────────────────────────────────────────
   cms:
-    image: directus/directus:11
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: volkstanz-cms
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
-      redis:
-        condition: service_started
     environment:
-      SECRET: ${DIRECTUS_SECRET}
-      KEY: ${DIRECTUS_KEY}
+      NODE_ENV: production
 
-      # DB
-      DB_CLIENT: pg
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_DATABASE: ${POSTGRES_DB}
-      DB_USER: ${POSTGRES_USER}
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      # Postgres
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
 
-      # Cache & Rate-Limiter
-      # Hinweis: Directus 11 hat einen Bug, bei dem die internen Sub-Caches
-      # ([lock-cache], [system-cache], [deployment-cache]) CACHE_REDIS ignorieren
-      # und stur localhost:6379 versuchen. Daher Memory-Cache für die Sub-Systeme,
-      # Redis nur für den Rate-Limiter (der korrekt konfiguriert wird).
-      CACHE_ENABLED: "true"
-      CACHE_STORE: memory
-      CACHE_TTL: "300"
-      CACHE_NAMESPACE: "volkstanz"
-      RATE_LIMITER_ENABLED: "true"
-      RATE_LIMITER_STORE: memory
-      RATE_LIMITER_POINTS: ${RATE_LIMITER_POINTS}
-      RATE_LIMITER_DURATION: ${RATE_LIMITER_DURATION}
+      # Payload-Geheimnis (Session, JWTs)
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
 
-      # Auth / Security
-      AUTH_TOTP_ENABLED: "true"
-      AUTH_LOCK_TIME: ${AUTH_LOCK_TIME}
-      AUTH_MAX_LOGIN_ATTEMPTS: ${AUTH_MAX_LOGIN_ATTEMPTS}
-
-      # Routing – Admin unter ${ADMIN_PATH} erreichbar.
-      # Nginx streift den ADMIN_PATH-Prefix VOR dem Forwarding ab (siehe
-      # router-Template), Directus sieht intern nur /admin, /api, /assets.
-      # Damit Directus' generierte URLs in Responses (Asset-Links, API-Calls)
-      # ebenfalls den Prefix bekommen, muss PUBLIC_URL den ADMIN_PATH
-      # enthalten — sonst rufen Browser /admin/assets/foo.js direkt am Root
-      # ab und landen bei Astro (404 → schwarze Admin-Seite).
+      # Routing — Admin unter ${ADMIN_PATH} erreichbar
       PUBLIC_URL: ${PUBLIC_URL_BASE:-}${ADMIN_PATH}
-      ROOT_REDIRECT: /
+      SITE_URL: ${PUBLIC_URL_BASE}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
 
-      # Initialer Admin
-      ADMIN_EMAIL: ${DIRECTUS_ADMIN_EMAIL}
-      ADMIN_PASSWORD: ${DIRECTUS_ADMIN_PASSWORD}
+      # Initialer Admin (wird vom Seed angelegt, falls users-Tabelle leer)
+      INITIAL_ADMIN_NAME: ${INITIAL_ADMIN_NAME:-Administrator}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD}
 
-      # i18n
-      DEFAULT_LANGUAGE: de
-      LANGUAGES: de,en
+      # Auth
+      AUTH_MAX_LOGIN_ATTEMPTS: ${AUTH_MAX_LOGIN_ATTEMPTS:-5}
+      AUTH_LOCK_TIME: ${AUTH_LOCK_TIME:-900}
 
-      # E-Mail (optional, für Reset-Flows)
-      EMAIL_TRANSPORT: ${EMAIL_TRANSPORT:-sendmail}
+      # Rate-Limiter (Payload intern, In-Memory)
+      RATE_LIMITER_POINTS: ${RATE_LIMITER_POINTS:-500}
+      RATE_LIMITER_DURATION: ${RATE_LIMITER_DURATION:-60}
+
+      # TOTP
+      TOTP_ISSUER: ${TOTP_ISSUER:-Volkstanz·Map}
+
+      # Server
+      HOST: 0.0.0.0
+      PORT: 3000
     volumes:
-      - cms_uploads:/directus/uploads
-      - ./infra/cms/extensions:/directus/extensions:ro
+      - cms_storage:/app/storage
+    expose:
+      - "3000"
     networks: [backend]
 
   # ─────────────────────────────────────────────────────────────────────
@@ -122,8 +91,8 @@ services:
       cms:
         condition: service_started
     environment:
-      DIRECTUS_URL: http://cms:8055
-      PUBLIC_API_BASE: ${PUBLIC_URL_BASE}${ADMIN_PATH}
+      PAYLOAD_URL: http://cms:3000
+      PUBLIC_API_BASE: ${PUBLIC_URL_BASE:-}${ADMIN_PATH}
       SITE_URL: ${PUBLIC_URL_BASE}
       DEFAULT_LOCALE: de
       SUPPORTED_LOCALES: de,en
@@ -149,7 +118,7 @@ services:
     environment:
       ADMIN_PATH: ${ADMIN_PATH}
       WEB_UPSTREAM: web:8095
-      CMS_UPSTREAM: cms:8055
+      CMS_UPSTREAM: cms:3000
     ports:
       - "${EXPOSED_PORT:-80}:80"
     volumes:
@@ -158,8 +127,7 @@ services:
 
 volumes:
   db_data:
-  redis_data:
-  cms_uploads:
+  cms_storage:
 
 networks:
   backend:
