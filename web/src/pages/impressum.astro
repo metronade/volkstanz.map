@@ -1,0 +1,89 @@
+---
+import Base from '@layouts/Base.astro';
+import { directusGet } from '@lib/directus';
+import { localeFromPath, type Locale } from '@i18n/index';
+import { renderMarkdown } from '@lib/markdown';
+
+const locale: Locale = localeFromPath(Astro.url.pathname);
+
+const content = await directusGet<{ data: { body_md_de?: string; body_md_en?: string } | null }>(
+  '/items/cms_content',
+  {
+    filter: JSON.stringify({ key: { _eq: 'legal.imprint' } }),
+    single: '1',
+    fields: 'body_md_de,body_md_en',
+  },
+);
+
+const fallbackDe = `# Impressum
+
+Angaben gemäß § 5 TMG:
+
+[Vollständiger Name / Organisation]
+[Straße und Hausnummer]
+[PLZ und Ort]
+
+Vertreten durch: [Name]
+Kontakt: [E-Mail-Adresse]
+
+Registereintrag: [Registergericht + Registernummer, falls zutreffend]
+Umsatzsteuer-ID: [sofern vorhanden]
+
+**Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV:**
+[Name, Anschrift]
+
+**Streitschlichtung:**
+Wir sind nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor einer
+Verbraucherschlichtungsstelle teilzunehmen.`;
+
+const fallbackEn = `# Imprint
+
+Information according to § 5 TMG:
+
+[Full name / organisation]
+[Street and number]
+[ZIP and city]
+
+Represented by: [name]
+Contact: [email address]
+
+Commercial register: [court + register number, if applicable]
+VAT ID: [if available]
+
+**Responsible for content according to § 55 Abs. 2 RStV:**
+[name, address]
+
+**Dispute resolution:**
+We are not willing or obliged to participate in dispute resolution proceedings
+before a consumer dispute resolution body.`;
+
+const body = (locale === 'en'
+  ? (content?.data?.body_md_en || fallbackEn)
+  : (content?.data?.body_md_de || fallbackDe));
+
+const html = renderMarkdown(body);
+---
+
+<Base title={locale === 'de' ? 'Impressum' : 'Imprint'}>
+  <article class="legal">
+    <div class="container container--narrow">
+      <h1>{locale === 'de' ? 'Impressum' : 'Imprint'}</h1>
+      <div class="legal__body" set:html={html} />
+    </div>
+  </article>
+</Base>
+
+<style>
+  .legal { padding-block: var(--space-8) var(--space-7); }
+  .legal h1 { font-size: var(--fs-3xl); margin-bottom: var(--space-5); }
+  .legal__body { line-height: var(--lh-loose); color: var(--ink-secondary); }
+  .legal__body :global(h1) { display: none; }
+  .legal__body :global(h2) {
+    font-family: var(--font-display);
+    color: var(--ink-primary);
+    margin-top: var(--space-5);
+    margin-bottom: var(--space-2);
+    font-size: var(--fs-lg);
+  }
+  .legal__body :global(p) { margin-bottom: var(--space-3); }
+</style>

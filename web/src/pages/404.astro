@@ -1,0 +1,24 @@
+---
+import Base from '@layouts/Base.astro';
+import CompassRose from '@components/CompassRose.astro';
+import { t, localeFromPath } from '@i18n/index';
+const locale = localeFromPath(Astro.url.pathname);
+---
+
+<Base title={t('error.404.title', locale)}>
+  <section class="error">
+    <div class="container container--narrow">
+      <CompassRose size={160} opacity={0.6} />
+      <h1>{t('error.404.title', locale)}</h1>
+      <p>{t('error.404.body', locale)}</p>
+      <a href="/" class="btn btn--primary">← Volkstanz·Map</a>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .error { padding-block: var(--space-9); text-align: center; }
+  .error :global(svg) { color: var(--accent-gold-d); margin-bottom: var(--space-5); }
+  .error h1 { font-size: var(--fs-3xl); margin-bottom: var(--space-3); }
+  .error p { color: var(--ink-secondary); margin-bottom: var(--space-5); font-style: italic; font-family: var(--font-display); }
+</style>

@@ -1,0 +1,92 @@
+---
+import '@styles/tokens.css';
+import '@styles/base.css';
+import Header from '@components/Header.astro';
+import Footer from '@components/Footer.astro';
+import { localeFromPath, type Locale } from '@i18n/index';
+
+interface Props {
+  title?: string;
+  description?: string;
+  ogImage?: string;
+  /** Unterdrückt Header/Footer (z. B. für Druckansicht) */
+  bare?: boolean;
+}
+
+const { title, description, ogImage, bare = false } = Astro.props;
+const locale: Locale = localeFromPath(Astro.url.pathname);
+
+const pageTitle = title
+  ? `${title} · Volkstanz·Map`
+  : 'Volkstanz·Map — Karte der Volkstanzgruppen';
+
+const pageDescription = description ??
+  'Interaktive Karte der Volkstanzgruppen im DACH-Raum und weltweit.';
+
+// Sprache als Cookie für Konsistenz
+Astro.cookies.set('vt_locale', locale, {
+  path: '/',
+  httpOnly: false,
+  secure: true,
+  sameSite: 'strict',
+  maxAge: 60 * 60 * 24 * 365,
+});
+---
+
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="generator" content={Astro.generator} />
+
+    <title>{pageTitle}</title>
+    <meta name="description" content={pageDescription} />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate" hreflang="de" href={`/de${Astro.url.pathname.replace(/^\/(en|de)/, '')}`} />
+    <link rel="alternate" hreflang="en" href={`/en${Astro.url.pathname.replace(/^\/(en|de)/, '')}`} />
+
+    <!-- OpenGraph -->
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={pageDescription} />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content={locale === 'en' ? 'en_US' : 'de_DE'} />
+    {ogImage && <meta property="og:image" content={ogImage} />}
+
+    <!-- TikTok/Pinterest/X (dezent) -->
+    <meta name="theme-color" content="#F5EFE3" />
+  </head>
+
+  <body>
+    <a href="#main" class="skip-link">zum Inhalt</a>
+
+    {!bare && <Header />}
+
+    <main id="main" class="site-main">
+      <slot />
+    </main>
+
+    {!bare && <Footer />}
+
+    <style is:global>
+      .skip-link {
+        position: absolute;
+        top: -200px;
+        left: var(--space-4);
+        z-index: 1000;
+        padding: var(--space-2) var(--space-4);
+        background: var(--ink-primary);
+        color: var(--paper-base);
+        border-radius: var(--radius-sm);
+        font-size: var(--fs-sm);
+        text-decoration: none;
+      }
+      .skip-link:focus { top: var(--space-2); }
+
+      .site-main {
+        min-height: calc(100vh - 200px);
+      }
+    </style>
+  </body>
+</html>

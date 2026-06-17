@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 64" width="280" height="64">
+  <!-- Wortmarke Volkstanz-Map -->
+  <g fill="#2B2724" font-family="Cormorant Garamond, Georgia, serif">
+    <!-- Mini-Kompass links -->
+    <g transform="translate(32 32)" stroke="#2B2724" fill="none" stroke-width="1">
+      <circle r="20" />
+      <polygon points="0,-15 4,0 0,15 -4,0" fill="#2B2724" stroke="none" />
+      <polygon points="0,-15 4,0 0,0" fill="#7A2E2E" stroke="none" />
+      <line x1="-20" y1="0" x2="20" y2="0" stroke-opacity="0.4" />
+    </g>
+    <!-- Wort "Volkstanz" in Cormorant -->
+    <text x="64" y="40" font-size="28" font-weight="600" letter-spacing="0.5">Volkstanz</text>
+    <!-- Trenn-Punkt in Altgold -->
+    <circle cx="200" cy="36" r="2.5" fill="#B08A3E" />
+    <!-- "Map" in Inter, etwas dezenter -->
+    <text x="210" y="40"
+          font-family="Inter, system-ui, sans-serif"
+          font-size="20" font-weight="500" fill="#5C544A">Map</text>
+  </g>
+</svg>

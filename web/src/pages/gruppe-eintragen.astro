@@ -1,0 +1,366 @@
+---
+import Base from '@layouts/Base.astro';
+import { t, localeFromPath, type Locale } from '@i18n/index';
+import { directusGet, assetUrl } from '@lib/directus';
+
+const locale: Locale = localeFromPath(Astro.url.pathname);
+
+// Aktuelle Consent-Versionen laden (Pflicht-Checkboxen)
+const consent = await directusGet<{ data: { type: string; id: string; version: number }[] }>(
+  '/items/consent_versions',
+  {
+    filter: JSON.stringify({ valid_until: { _null: true } }),
+    fields: 'id,type,version',
+    sort: 'version',
+  },
+);
+const latestByType = new Map<string, string>();
+if (consent?.data) {
+  for (const c of consent.data) latestByType.set(c.type, c.id);
+}
+
+const tosId      = latestByType.get('tos')      ?? '';
+const privacyId  = latestByType.get('privacy')  ?? '';
+const kugId      = latestByType.get('kug')      ?? '';
+---
+
+<Base title={t('submit.title', locale)}>
+  <article class="submit">
+    <div class="container container--narrow">
+      <header class="submit__head">
+        <span class="pill pill--accent">{locale === 'de' ? 'Selbsteintragung' : 'Self-registration'}</span>
+        <h1>{t('submit.title', locale)}</h1>
+        <p class="submit__lead">{t('submit.lead', locale)}</p>
+      </header>
+
+      <form class="submit__form" method="POST" action="/api/submit" enctype="multipart/form-data" data-vt-submit>
+        <!-- ════ Gruppe ════ -->
+        <fieldset class="card">
+          <legend>{t('submit.section.group', locale)}</legend>
+
+          <div class="grid-2">
+            <div>
+              <label for="name">{t('submit.field.name', locale)} *</label>
+              <input id="name" name="name" type="text" required maxlength="120" />
+              <small>{t('submit.field.name.hint', locale)}</small>
+            </div>
+            <div>
+              <label for="slug">{t('submit.field.slug', locale)} *</label>
+              <input id="slug" name="slug" type="text" required pattern="[a-z0-9-]{3,80}"
+                     placeholder="alpenrose-1923" />
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div>
+              <label for="founded">{t('submit.field.founded', locale)}</label>
+              <input id="founded" name="founded_year" type="number" min="1600" max={new Date().getFullYear()} />
+            </div>
+            <div>
+              <label for="rehearsal">{t('submit.field.rehearsal', locale)}</label>
+              <input id="rehearsal" name="rehearsal_times_de" type="text" maxlength="200"
+                     placeholder={locale === 'de' ? 'jeden Di 19:30 Uhr' : 'every Tue 7:30pm'} />
+            </div>
+          </div>
+
+          <label for="description">{t('submit.field.description', locale)}</label>
+          <textarea id="description" name="description_de" rows="4" maxlength="1000"></textarea>
+        </fieldset>
+
+        <!-- ════ Standort ════ -->
+        <fieldset class="card">
+          <legend>{t('submit.section.location', locale)}</legend>
+
+          <p class="hint">{t('submit.field.geom.hint', locale)}</p>
+
+          <div class="submit__map" id="submitMap" data-vt-submit-map
+               data-i18n-hint={locale === 'de' ? 'Auf Karte klicken' : 'Click on map'}></div>
+          <div class="meta">
+            <span data-vt-coords>—</span>
+          </div>
+
+          <input type="hidden" name="lat" required data-vt-lat />
+          <input type="hidden" name="lng" required data-vt-lng />
+
+          <div class="grid-2">
+            <div>
+              <label for="city">{t('submit.field.city', locale)}</label>
+              <input id="city" name="city" type="text" maxlength="120" />
+            </div>
+            <div>
+              <label for="country">{t('submit.field.country', locale)}</label>
+              <input id="country" name="country" type="text" value="DE" maxlength="2" />
+            </div>
+          </div>
+
+          <label for="privacy">{t('submit.field.privacy', locale)} *</label>
+          <select id="privacy" name="privacy_level" required>
+            <option value="neighborhood" selected>{t('submit.field.privacy.neighborhood', locale)}</option>
+            <option value="city">{t('submit.field.privacy.city', locale)}</option>
+            <option value="region">{t('submit.field.privacy.region', locale)}</option>
+            <option value="exact">{t('submit.field.privacy.exact', locale)}</option>
+          </select>
+        </fieldset>
+
+        <!-- ════ Kontakt ════ -->
+        <fieldset class="card">
+          <legend>{t('submit.section.contact', locale)}</legend>
+          <div class="grid-2">
+            <div>
+              <label for="website">{t('submit.field.website', locale)}</label>
+              <input id="website" name="website" type="url" placeholder="https://" />
+            </div>
+            <div>
+              <label for="email">{t('submit.field.email', locale)}</label>
+              <input id="email" name="email" type="email" />
+            </div>
+          </div>
+          <div>
+            <label for="phone">{t('submit.field.phone', locale)}</label>
+            <input id="phone" name="phone" type="tel" />
+          </div>
+        </fieldset>
+
+        <!-- ════ Bild ════ -->
+        <fieldset class="card">
+          <legend>{t('submit.section.image', locale)}</legend>
+          <label for="image">{t('submit.field.image', locale)}</label>
+          <input id="image" name="image" type="file" accept="image/png,image/jpeg" />
+          <small>{t('submit.field.image.hint', locale)}</small>
+        </fieldset>
+
+        <!-- ════ Consents ════ -->
+        <fieldset class="card">
+          <legend>{t('submit.section.consents', locale)}</legend>
+
+          <label class="check">
+            <input type="checkbox" name="consent_tos" required value={tosId} />
+            <span>{t('submit.consent.tos', locale)}</span>
+          </label>
+          <input type="hidden" name="consent_tos_v" value={tosId} />
+
+          <label class="check">
+            <input type="checkbox" name="consent_privacy" required value={privacyId} />
+            <span>{t('submit.consent.privacy', locale)}</span>
+          </label>
+          <input type="hidden" name="consent_privacy_v" value={privacyId} />
+
+          <label class="check">
+            <input type="checkbox" name="consent_kug" required value={kugId} />
+            <span>{t('submit.consent.kug', locale)}</span>
+          </label>
+          <input type="hidden" name="consent_kug_v" value={kugId} />
+
+          <label class="check">
+            <input type="checkbox" name="consent_branding" />
+            <span>{t('submit.consent.branding', locale)}</span>
+          </label>
+        </fieldset>
+
+        <div class="submit__actions">
+          <button type="submit" class="btn btn--primary">{t('submit.button', locale)}</button>
+        </div>
+      </form>
+
+      <p class="submit__error" data-vt-submit-error hidden></p>
+    </div>
+  </article>
+</Base>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<style>
+  .submit { padding-block: var(--space-8) var(--space-7); }
+  .submit__head { margin-bottom: var(--space-7); text-align: center; }
+  .submit__head h1 { font-size: var(--fs-3xl); margin: var(--space-3) 0 var(--space-3); }
+  .submit__lead {
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    font-style: italic;
+    color: var(--ink-secondary);
+    max-width: 36ch;
+    margin-inline: auto;
+  }
+
+  .submit__form { display: grid; gap: var(--space-5); }
+
+  .submit__form .card { padding: var(--space-5); }
+  .submit__form .card legend {
+    font-family: var(--font-display);
+    font-size: var(--fs-lg);
+    font-weight: 600;
+    color: var(--accent-forest);
+    padding-inline: var(--space-2);
+  }
+
+  .submit__form label { margin-top: var(--space-3); }
+  .submit__form input[type="text"],
+  .submit__form input[type="email"],
+  .submit__form input[type="url"],
+  .submit__form input[type="tel"],
+  .submit__form input[type="number"],
+  .submit__form select,
+  .submit__form textarea {
+    margin-bottom: var(--space-3);
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+  }
+
+  .hint {
+    background: rgba(176, 138, 62, 0.10);
+    padding: var(--space-3) var(--space-4);
+    border-left: 2px solid var(--accent-gold);
+    font-size: var(--fs-sm);
+    color: var(--ink-secondary);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-4);
+  }
+
+  .submit__map {
+    height: 380px;
+    border: 1px solid var(--line-hair);
+    border-radius: var(--radius-md);
+    background: var(--paper-warm);
+    overflow: hidden;
+    margin-bottom: var(--space-3);
+  }
+  .submit__map :global(.leaflet-tile-pane) { filter: var(--map-filter); }
+  .submit__map :global(.leaflet-control-attribution) {
+    background: rgba(245, 239, 227, 0.85) !important;
+    font-size: 10px;
+  }
+
+  .check {
+    display: grid !important;
+    grid-template-columns: 1.4em 1fr;
+    gap: var(--space-3);
+    align-items: start;
+    margin-top: var(--space-4) !important;
+    cursor: pointer;
+  }
+  .check input[type="checkbox"] {
+    margin-top: 0.3em;
+    width: 1.1em;
+    height: 1.1em;
+    accent-color: var(--accent-forest);
+  }
+  .check span { font-size: var(--fs-sm); line-height: var(--lh-snug); }
+
+  .submit__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+  }
+
+  .submit__error {
+    color: var(--accent-wine);
+    font-size: var(--fs-sm);
+    text-align: center;
+  }
+
+  @media (max-width: 720px) {
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+</style>
+
+<script>
+  // Leaflet-Map für Positionswahl
+  import('leaflet').then(({ default: L }) => {
+    const container = document.getElementById('submitMap');
+    if (!container) return;
+
+    const map = L.map(container, { scrollWheelZoom: false }).setView([50.11, 10.45], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap',
+      maxZoom: 18,
+    }).addTo(map);
+
+    let marker: L.Marker | null = null;
+    const latInput = document.querySelector<HTMLInputElement>('[data-vt-lat]');
+    const lngInput = document.querySelector<HTMLInputElement>('[data-vt-lng]');
+    const display  = document.querySelector<HTMLElement>('[data-vt-coords]');
+
+    map.on('click', (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
+      if (marker) marker.setLatLng([lat, lng]);
+      else marker = L.marker([lat, lng]).addTo(map);
+      if (latInput) latInput.value = lat.toFixed(6);
+      if (lngInput) lngInput.value = lng.toFixed(6);
+      if (display)  display.textContent = `${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
+    });
+  });
+
+  // Form: Datei-Upload via Directus Files zuerst, dann JSON-Submit an /api/submit
+  const form = document.querySelector<HTMLFormElement>('[data-vt-submit]');
+  const errorEl = document.querySelector<HTMLElement>('[data-vt-submit-error]');
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorEl?.setAttribute('hidden', '');
+
+    try {
+      const fd = new FormData(form);
+      const payload: Record<string, unknown> = {
+        name: fd.get('name'),
+        slug: fd.get('slug'),
+        founded_year: fd.get('founded_year') ? Number(fd.get('founded_year')) : null,
+        website: fd.get('website') || null,
+        email: fd.get('email') || null,
+        phone: fd.get('phone') || null,
+        city: fd.get('city') || null,
+        country: fd.get('country') || 'DE',
+        lat: Number(fd.get('lat')),
+        lng: Number(fd.get('lng')),
+        privacy_level: fd.get('privacy_level'),
+        description_de: fd.get('description_de') || null,
+        rehearsal_times_de: fd.get('rehearsal_times_de') || null,
+        consent_tos_v: fd.get('consent_tos_v'),
+        consent_privacy_v: fd.get('consent_privacy_v'),
+        consent_kug_v: fd.get('consent_kug_v'),
+        consent_branding: fd.get('consent_branding') === 'on',
+      };
+
+      // Bild direkt in Directus hochladen (falls gewählt)
+      const file = fd.get('image') as File | null;
+      if (file && file.size > 0) {
+        const assetFd = new FormData();
+        assetFd.append('file', file);
+        const upRes = await fetch(`${window.__VT_API_BASE__}/files`, {
+          method: 'POST',
+          body: assetFd,
+        });
+        if (upRes.ok) {
+          const upJson = await upRes.json();
+          payload.image_asset_id = upJson?.data?.id;
+        }
+      }
+
+      const res = await fetch('/api/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        window.location.href = '/danke';
+      } else {
+        const err = await res.json().catch(() => ({ error: 'unknown' }));
+        throw new Error(err.error || 'unknown');
+      }
+    } catch (err) {
+      if (errorEl) {
+        errorEl.textContent = String(err);
+        errorEl.removeAttribute('hidden');
+      }
+    }
+  });
+</script>
+
+<script is:inline define:vars={{ apiBase: (Astro.url.origin + (import.meta.env.PUBLIC_API_BASE || '/verwaltung')) }}>
+  window.__VT_API_BASE__ = apiBase;
+</script>

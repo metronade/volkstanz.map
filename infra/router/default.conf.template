@@ -1,0 +1,86 @@
+# ╔══════════════════════════════════════════════════════════════════════╗
+# ║  Volkstanz-Map – Interner Nginx-Router                                 ║
+# ║                                                                        ║
+# ║ ROUTING-LOGIK:                                                         ║
+# ║   ${ADMIN_PATH}/*  → Directus (CMS + Admin + API unter diesem Pfad)    ║
+# ║   /                 → Astro-Frontend (SSR + statische Assets)          ║
+# ║                                                                        ║
+# ║  Diese Datei wird vom nginx-Image via envsubst verarbeitet,            ║
+# ║  ${ADMIN_PATH} / ${WEB_UPSTREAM} / ${CMS_UPSTREAM} werden substituiert.║
+# ║  Alle Nginx-Variablen ($host, $uri, …) bleiben unangetastet.           ║
+# ╚══════════════════════════════════════════════════════════════════════╝
+
+# ── Upstream-Definitionen ───────────────────────────────────────────────
+upstream vt_web {
+    server ${WEB_UPSTREAM};
+}
+upstream vt_cms {
+    server ${CMS_UPSTREAM};
+}
+
+# ── MIME / Gzip / Proxy-Buffer ──────────────────────────────────────────
+gzip on;
+gzip_types text/plain text/css application/javascript application/json image/svg+xml;
+gzip_min_length 1024;
+
+proxy_buffer_size       128k;
+proxy_buffers           4 256k;
+proxy_busy_buffers_size 256k;
+
+# ── Maximale Body-Größe (Bild-Uploads) ─────────────────────────────────
+client_max_body_size 25m;
+
+server {
+    listen 80;
+    server_name _;
+
+    # Real-IP vom externen NPM weiterreichen
+    set_real_ip_from 10.0.0.0/8;
+    set_real_ip_from 172.16.0.0/12;
+    set_real_ip_from 192.168.0.0/16;
+    real_ip_header X-Real-IP;
+
+    # ───────────────────────────────────────────────────────────────────
+    # ${ADMIN_PATH}/* → Directus
+    # Direkt durchgereicht — Directus selbst bekommt durch PUBLIC_URL den
+    # korrekten Prefix mit, daher keine Rewrite nötig.
+    # ───────────────────────────────────────────────────────────────────
+    location ${ADMIN_PATH}/ {
+        proxy_pass         http://vt_cms;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_set_header   Upgrade           $http_upgrade;
+        proxy_set_header   Connection        "upgrade";
+        proxy_read_timeout 300s;
+    }
+
+    # Ein exakter Treffer auf den Pfad (ohne Slash) → Weiterleitung
+    location = ${ADMIN_PATH} {
+        return 301 ${ADMIN_PATH}/;
+    }
+
+    # ───────────────────────────────────────────────────────────────────
+    # Health-Endpoint (für Docker/NPM Healthchecks)
+    # ───────────────────────────────────────────────────────────────────
+    location = /__health {
+        access_log off;
+        add_header Content-Type application/json;
+        return 200 '{"status":"ok"}';
+    }
+
+    # ───────────────────────────────────────────────────────────────────
+    # / → Astro-Web
+    # ───────────────────────────────────────────────────────────────────
+    location / {
+        proxy_pass         http://vt_web;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+}

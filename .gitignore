@@ -1,0 +1,24 @@
+# Secrets & lokale Konfig
+.env
+.env.local
+.env.*.local
+*.secret
+
+# Build-Artefakte
+web/dist/
+web/node_modules/
+web/.astro/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Docker-Volumes (falls lokal gemountet)
+data/

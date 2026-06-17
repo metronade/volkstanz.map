@@ -1,0 +1,96 @@
+---
+import { t, localeFromPath, type Locale, localizedPath } from '@i18n/index';
+
+const locale: Locale = localeFromPath(Astro.url.pathname);
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="container site-footer__inner">
+    <div class="site-footer__brand">
+      <img src="/compass-rose.svg" alt="" width="56" height="56" loading="lazy" />
+      <div>
+        <div class="site-footer__name">{t('brand.name', locale)}</div>
+        <div class="site-footer__tagline">{t('brand.tagline', locale)}</div>
+      </div>
+    </div>
+
+    <nav class="site-footer__links" aria-label="footer">
+      <a href={localizedPath('was-ist', locale)}>{t('footer.about', locale)}</a>
+      <a href={localizedPath('impressum', locale)}>{t('nav.imprint', locale)}</a>
+      <a href={localizedPath('datenschutz', locale)}>{t('nav.privacy', locale)}</a>
+    </nav>
+
+    <div class="site-footer__meta">
+      <small>© {year} · {t('footer.rights', locale)}</small>
+      <small>{t('footer.engineered', locale)}</small>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    margin-top: var(--space-9);
+    background: var(--paper-deep);
+    border-top: 1px solid var(--line-emphasis);
+    padding-block: var(--space-7) var(--space-6);
+  }
+
+  .site-footer__inner {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: var(--space-6);
+    align-items: center;
+  }
+
+  .site-footer__brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .site-footer__brand img { opacity: 0.85; }
+
+  .site-footer__name {
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    font-weight: 600;
+    color: var(--ink-primary);
+  }
+
+  .site-footer__tagline {
+    font-size: var(--fs-sm);
+    color: var(--ink-muted);
+    font-style: italic;
+  }
+
+  .site-footer__links {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-5);
+    flex-wrap: wrap;
+  }
+
+  .site-footer__links a {
+    font-size: var(--fs-sm);
+    color: var(--ink-secondary);
+    text-decoration: none;
+  }
+  .site-footer__links a:hover { color: var(--accent-wine); }
+
+  .site-footer__meta {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  @media (max-width: 720px) {
+    .site-footer__inner {
+      grid-template-columns: 1fr;
+      text-align: center;
+    }
+    .site-footer__brand { justify-content: center; }
+    .site-footer__meta { text-align: center; }
+  }
+</style>

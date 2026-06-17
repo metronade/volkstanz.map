@@ -1,0 +1,335 @@
+---
+/**
+ * Leaflet-Map-Island für die Volkstanz-Map.
+ *
+ * - Karte wird clientseitig initialisiert (kein SSR-JS)
+ * - OSM-Tiles erhalten über CSS einen Warm-Paper-Filter
+ * - Marker = Windrosen-SVG (pin.svg / pin-active.svg)
+ * - Popups zeigen Name, Stadt, Bild, Website, Kontakt
+ * - Suchfeld + Filter werden via Custom-Events gesteuert
+ *
+ * Datenquelle: /api/groups.geojson (SSR-Endpoint)
+ */
+import { t, localeFromPath, type Locale } from '@i18n/index';
+
+interface Props {
+  height?: string;
+  /** Wenn gesetzt, wird die Karte auf ein einzelnes Profil geklickt → marker einzeln. */
+  singleGroupSlug?: string;
+  initialLat?: number;
+  initialLng?: number;
+  initialZoom?: number;
+}
+const {
+  height = '600px',
+  singleGroupSlug,
+  initialLat = 50.11,   // Mitte DACH
+  initialLng = 10.45,
+  initialZoom = 5,
+} = Astro.props;
+
+const locale: Locale = localeFromPath(Astro.url.pathname);
+const apiKey = 'vt-map';
+---
+
+<div
+  class="vt-map"
+  data-vt-map
+  data-locale={locale}
+  data-single-slug={singleGroupSlug ?? ''}
+  data-i18n-fallback={t('map.fallback', locale)}
+  data-i18n-more={t('map.popup.more', locale)}
+  data-i18n-founded={t('map.popup.founded', locale)}
+  style={`height: ${height}`}
+  role="region"
+  aria-label="Karte der Volkstanzgruppen"
+>
+  <noscript>
+    <p class="vt-map__noscript">{t('map.fallback', locale)}</p>
+  </noscript>
+</div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""/>
+
+<style>
+  .vt-map {
+    position: relative;
+    background: var(--paper-warm);
+    border: 1px solid var(--line-hair);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Tiles: Warm-Paper-Filter */
+  .vt-map :global(.leaflet-tile-pane) {
+    filter: var(--map-filter);
+  }
+
+  .vt-map :global(.leaflet-control-attribution) {
+    background: rgba(245, 239, 227, 0.85) !important;
+    color: var(--ink-muted) !important;
+    font-family: var(--font-mono);
+    font-size: 10px;
+  }
+
+  .vt-map :global(.leaflet-control-attribution a) {
+    color: var(--accent-forest) !important;
+  }
+
+  .vt-map :global(.leaflet-control-zoom a) {
+    background: var(--paper-base) !important;
+    color: var(--ink-primary) !important;
+    border-color: var(--line-emphasis) !important;
+    font-family: var(--font-display) !important;
+    font-weight: 600;
+  }
+
+  .vt-map :global(.leaflet-control-zoom a:hover) {
+    background: var(--paper-deep) !important;
+  }
+
+  .vt-map__noscript {
+    padding: var(--space-5);
+    text-align: center;
+    color: var(--ink-muted);
+  }
+
+  /* Popups im Papier-Stil */
+  .vt-map :global(.leaflet-popup-content-wrapper) {
+    background: var(--paper-base);
+    color: var(--ink-primary);
+    border: 1px solid var(--line-emphasis);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-pop);
+    font-family: var(--font-body);
+  }
+
+  .vt-map :global(.leaflet-popup-tip) {
+    background: var(--paper-base);
+    border: 1px solid var(--line-emphasis);
+  }
+
+  .vt-map :global(.vt-popup) {
+    min-width: 220px;
+    max-width: 280px;
+  }
+
+  .vt-map :global(.vt-popup__image) {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-3);
+    border: 1px solid var(--line-hair);
+  }
+
+  .vt-map :global(.vt-popup__title) {
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    font-weight: 600;
+    margin: 0 0 var(--space-1);
+    color: var(--ink-primary);
+  }
+
+  .vt-map :global(.vt-popup__meta) {
+    font-size: var(--fs-xs);
+    color: var(--ink-muted);
+    font-family: var(--font-mono);
+    margin-bottom: var(--space-2);
+  }
+
+  .vt-map :global(.vt-popup__contacts) {
+    display: flex;
+    gap: var(--space-3);
+    font-size: var(--fs-sm);
+    margin-bottom: var(--space-3);
+    flex-wrap: wrap;
+  }
+
+  .vt-map :global(.vt-popup__contacts a) {
+    text-decoration: none;
+    color: var(--accent-forest);
+  }
+  .vt-map :global(.vt-popup__contacts a:hover) { color: var(--accent-wine); }
+
+  .vt-map :global(.vt-popup__more) {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-family: var(--font-display);
+    font-size: var(--fs-base);
+    font-weight: 600;
+    color: var(--accent-forest);
+    text-decoration: none;
+    border-bottom: 1px solid var(--accent-gold);
+    padding-bottom: 2px;
+  }
+  .vt-map :global(.vt-popup__more:hover) { color: var(--accent-wine); border-bottom-color: var(--accent-wine); }
+</style>
+
+<script>
+  import('leaflet').then(({ default: L }) => {
+    const containers = document.querySelectorAll<HTMLElement>('[data-vt-map]');
+    containers.forEach(initMap);
+
+    interface VtGroup {
+      type: 'Feature';
+      geometry: { type: 'Point'; coordinates: [number, number] };
+      properties: {
+        id: string;
+        slug: string;
+        name: string;
+        city?: string;
+        country?: string;
+        founded_year?: number;
+        website?: string;
+        email?: string;
+        phone?: string;
+        image_url?: string;
+      };
+    }
+
+    function initMap(container: HTMLElement) {
+      const locale       = container.dataset.locale || 'de';
+      const singleSlug   = container.dataset.singleSlug || '';
+      const fallbackText = container.dataset.i18nFallback || '';
+      const moreLabel    = container.dataset.i18nMore || '';
+      const foundedLabel = container.dataset.i18nFounded || '';
+
+      const map = L.map(container, {
+        center: [
+          parseFloat(container.style.height ? '50.11' : '50.11'),
+          10.45,
+        ],
+        zoom: 5,
+        scrollWheelZoom: false,
+        zoomControl: true,
+      });
+
+      // Standard-OSM, wird via CSS gefiltert
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap-Mitwirkende',
+        maxZoom: 18,
+      }).addTo(map);
+
+      // Windrosen-Icon
+      const pinIcon = L.icon({
+        iconUrl: '/pin.svg',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        popupAnchor: [0, -14],
+      });
+      const pinActive = L.icon({
+        iconUrl: '/pin-active.svg',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        popupAnchor: [0, -14],
+      });
+
+      const markers: L.Marker[] = [];
+
+      // Daten holen
+      const url = singleSlug
+        ? `/api/groups.geojson?slug=${encodeURIComponent(singleSlug)}`
+        : '/api/groups.geojson';
+
+      fetch(url)
+        .then((r) => r.ok ? r.json() : null)
+        .then((geojson: { features: VtGroup[] } | null) => {
+          if (!geojson?.features?.length) {
+            container.setAttribute('aria-label', fallbackText);
+            return;
+          }
+          geojson.features.forEach((g) => {
+            const [lng, lat] = g.geometry.coordinates;
+            const m = L.marker([lat, lng], { icon: pinIcon })
+              .addTo(map)
+              .bindPopup(() => renderPopup(g, locale, moreLabel, foundedLabel), {
+                maxWidth: 300,
+                className: 'vt-popup-wrap',
+              });
+
+            m.on('mouseover', () => m.setIcon(pinActive));
+            m.on('mouseout',  () => m.setIcon(pinIcon));
+            markers.push(m);
+          });
+
+          // Auf alle Marker fit, außer bei Single-Slug
+          if (!singleSlug && markers.length) {
+            const group = L.featureGroup(markers);
+            map.fitBounds(group.getBounds().pad(0.15));
+          }
+        })
+        .catch(() => {
+          container.setAttribute('aria-label', fallbackText);
+        });
+
+      // Suchformular (global auf der Seite)
+      const searchForm = document.querySelector<HTMLFormElement>('[data-search-form]');
+      const searchInput = document.querySelector<HTMLInputElement>('[data-search-input]');
+      const searchMeta = document.querySelector<HTMLElement>('[data-search-meta]');
+
+      searchForm?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        applySearch();
+      });
+      searchInput?.addEventListener('input', () => applySearch(true));
+
+      function applySearch(quiet = false) {
+        const q = (searchInput?.value || '').trim().toLowerCase();
+        let visible = 0;
+        markers.forEach((m) => {
+          const p = (m.getPopup()?.getContent() as string) || '';
+          const matches = !q || p.toLowerCase().includes(q);
+          if (matches) { m.addTo(map); visible++; }
+          else { map.removeLayer(m); }
+        });
+        if (searchMeta && !quiet) {
+          searchMeta.textContent = visible === 0
+            ? '— keine Treffer —'
+            : `${visible} Gruppe(n) sichtbar`;
+        }
+      }
+    }
+
+    function renderPopup(g: VtGroup, locale: string, moreLabel: string, foundedLabel: string): string {
+      const p = g.properties;
+      const img = p.image_url
+        ? `<img class="vt-popup__image" src="${p.image_url}" alt="${escape(p.name)}" loading="lazy"/>`
+        : '';
+      const founded = p.founded_year
+        ? `<div class="vt-popup__meta">${foundedLabel} ${p.founded_year}</div>`
+        : '';
+      const city = p.city ? ` · ${escape(p.city)}` : '';
+
+      const contacts: string[] = [];
+      if (p.website) contacts.push(`<a href="${escape(p.website)}" target="_blank" rel="noopener">Web</a>`);
+      if (p.email)   contacts.push(`<a href="mailto:${escape(p.email)}">@</a>`);
+      if (p.phone)   contacts.push(`<a href="tel:${escape(p.phone.replace(/[^+\d]/g, ''))}">Tel</a>`);
+      const contactBlock = contacts.length
+        ? `<div class="vt-popup__contacts">${contacts.join('')}</div>`
+        : '';
+
+      const href = locale === 'de' ? `/gruppen/${p.slug}` : `/${locale}/gruppen/${p.slug}`;
+
+      return `
+        <div class="vt-popup">
+          ${img}
+          <h3 class="vt-popup__title">${escape(p.name)}</h3>
+          ${founded}
+          <div class="vt-popup__meta">${escape(p.country || '')}${city}</div>
+          ${contactBlock}
+          <a class="vt-popup__more" href="${href}">${moreLabel}</a>
+        </div>
+      `;
+    }
+
+    function escape(s: unknown): string {
+      return String(s ?? '').replace(/[&<>"]/g, (c) =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
+    }
+  });
+</script>

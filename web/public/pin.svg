@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Leaflet-Pin: 4-zackige Windrose, Nord in Weinrot -->
+  <g stroke="#2B2724" stroke-width="1" stroke-linejoin="round" fill="none">
+    <circle cx="16" cy="16" r="11" stroke-opacity="0.45" />
+    <!-- Nadel -->
+    <polygon points="16,4 18.5,16 16,28 13.5,16" fill="#2B2724" stroke="none" />
+    <polygon points="16,4 18.5,16 16,16" fill="#7A2E2E" stroke="none" />
+    <!-- Querachse -->
+    <polygon points="4,16 16,18.5 28,16 16,13.5" fill="#B08A3E" stroke="none" opacity="0.85" />
+    <!-- Zentrum -->
+    <circle cx="16" cy="16" r="1.6" fill="#2B2724" stroke="none" />
+  </g>
+</svg>

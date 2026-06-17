@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Heritage-Kompass – Favicon -->
+  <!-- Kreis mit vierzackiger Nadel -->
+  <g fill="none" stroke="#2B2724" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="16" cy="16" r="13.5" />
+    <circle cx="16" cy="16" r="9.5" stroke-width="0.8" stroke-opacity="0.55" />
+    <!-- Hauptachse N-S -->
+    <line x1="16" y1="3" x2="16" y2="29" stroke-width="0.7" stroke-opacity="0.4" />
+    <!-- Hauptachse O-W -->
+    <line x1="3" y1="16" x2="29" y2="16" stroke-width="0.7" stroke-opacity="0.4" />
+    <!-- Nadel – Nordspitze in Weinrot -->
+    <polygon points="16,6 19,16 16,26 13,16" fill="#2B2724" stroke="none" />
+    <polygon points="16,6 19,16 16,16" fill="#7A2E2E" stroke="none" />
+    <!-- Nebenachsen (diagonal, feiner) -->
+    <line x1="6.8" y1="6.8" x2="25.2" y2="25.2" stroke-width="0.4" stroke-opacity="0.3" />
+    <line x1="25.2" y1="6.8" x2="6.8" y2="25.2" stroke-width="0.4" stroke-opacity="0.3" />
+    <!-- N-Markierung -->
+    <polygon points="16,2 17.2,4.5 14.8,4.5" fill="#2B2724" stroke="none" />
+  </g>
+</svg>

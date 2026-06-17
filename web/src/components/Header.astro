@@ -1,0 +1,151 @@
+---
+import { t, localeFromPath, type Locale, DEFAULT_LOCALE } from '@i18n/index';
+import { localizedPath } from '@i18n/index';
+
+const { pathname } = Astro.url;
+const locale: Locale = localeFromPath(pathname);
+
+const otherLocale: Locale = locale === 'de' ? 'en' : 'de';
+
+const links = [
+  { key: 'nav.home',    href: localizedPath('', locale) },
+  { key: 'nav.about',   href: localizedPath('was-ist', locale) },
+  { key: 'nav.submit',  href: localizedPath('gruppe-eintragen', locale) },
+];
+
+const isActive = (href: string) =>
+  href === localizedPath('', locale)
+    ? pathname === href || pathname === `${href}/`
+    : pathname.startsWith(href);
+---
+
+<header class="site-header" role="banner">
+  <div class="container site-header__inner">
+    <a href={localizedPath('', locale)} class="site-header__brand" aria-label={t('brand.name', locale)}>
+      <img src="/logo.svg" alt="" width="200" height="46" loading="eager" />
+    </a>
+
+    <nav class="site-header__nav" aria-label="primary">
+      {links.map(({ key, href }) => (
+        <a
+          href={href}
+          class:list={['site-header__link', { 'is-active': isActive(href) }]}
+        >
+          {t(key, locale)}
+        </a>
+      ))}
+    </nav>
+
+    <div class="site-header__actions">
+      <a
+        href={localizedPath(pathname.replace(/^\/(en|de)/, '') || '/', otherLocale)}
+        hreflang={otherLocale}
+        class="site-header__locale"
+        title={t('nav.locale.switch', locale)}
+      >
+        {otherLocale.toUpperCase()}
+      </a>
+    </div>
+  </div>
+  <div class="site-header__rule" aria-hidden="true"></div>
+</header>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(245, 239, 227, 0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line-hair);
+  }
+
+  .site-header__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-5);
+    padding-block: var(--space-4);
+  }
+
+  .site-header__brand img {
+    height: 40px;
+    width: auto;
+  }
+
+  .site-header__nav {
+    display: flex;
+    gap: var(--space-5);
+    align-items: baseline;
+  }
+
+  .site-header__link {
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    font-weight: 500;
+    color: var(--ink-secondary);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    padding-bottom: 2px;
+    transition: color var(--duration-fast) var(--ease-paper),
+                border-color var(--duration-fast) var(--ease-paper);
+  }
+
+  .site-header__link:hover {
+    color: var(--accent-wine);
+  }
+
+  .site-header__link.is-active {
+    color: var(--ink-primary);
+    border-bottom-color: var(--accent-gold);
+  }
+
+  .site-header__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .site-header__locale {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.1em;
+    text-decoration: none;
+    color: var(--ink-secondary);
+    border: 1px solid var(--line-emphasis);
+    padding: 0.35em 0.7em;
+    border-radius: var(--radius-sm);
+    transition: all var(--duration-fast) var(--ease-paper);
+  }
+
+  .site-header__locale:hover {
+    color: var(--paper-base);
+    background: var(--ink-primary);
+    border-color: var(--ink-primary);
+  }
+
+  .site-header__rule {
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      var(--accent-gold) 50%,
+      transparent
+    );
+    opacity: 0.5;
+  }
+
+  @media (max-width: 720px) {
+    .site-header__inner {
+      flex-wrap: wrap;
+      gap: var(--space-3);
+    }
+    .site-header__nav {
+      order: 3;
+      width: 100%;
+      justify-content: center;
+      gap: var(--space-4);
+    }
+    .site-header__link { font-size: var(--fs-base); }
+  }
+</style>

@@ -1,0 +1,96 @@
+/* ╔══════════════════════════════════════════════════════════════════╗
+   ║  Volkstanz-Map – Design-Tokens                                     ║
+   ║  Heritage / Manufaktur-Stil: warmes Papier, Tinte, gedeckte Akzente║
+   ╚══════════════════════════════════════════════════════════════════╝ */
+
+:root {
+  /* ── Papiertöne (Hintergründe) ──────────────────────────────────── */
+  --paper-base:      #F5EFE3;   /* ungestrichenes Naturpapier */
+  --paper-warm:      #EFE6D2;   /* Karten-Untergrund, gealtert */
+  --paper-deep:      #E4D7BD;   /* Sektionstrenner, Footer */
+  --paper-shadow:    #D9C9A8;   /* Schattenwürfe */
+
+  /* ── Tinte (Texte) ──────────────────────────────────────────────── */
+  --ink-primary:     #2B2724;   /* warmes Anthrazit, nicht rein Schwarz */
+  --ink-secondary:   #5C544A;   /* graue Tinte */
+  --ink-muted:       #8A7E70;   /* Captions, Metadaten */
+  --ink-on-accent:   #F5EFE3;   /* heller Text auf farbigem Akzent */
+
+  /* ── Akzente (gedeckt, traditionsbewusst) ───────────────────────── */
+  --accent-forest:   #3D5641;   /* Tanne / Wald – Primäraktion */
+  --accent-forest-d: #2E4231;   /* Hover */
+  --accent-wine:     #7A2E2E;   /* Weinrot – Hervorhebung */
+  --accent-wine-d:   #5E2222;   /* Hover */
+  --accent-gold:     #B08A3E;   /* Altgold – feine Linien, Initialen */
+  --accent-gold-d:   #8E6E2F;   /* Hover */
+
+  /* ── Funktionale Linien ─────────────────────────────────────────── */
+  --line-hair:       #C9BC9D;   /* Haarlinie auf Papier */
+  --line-emphasis:   #A3957A;   /* betonte Linie */
+
+  /* ── Schatten (weich, nicht grell) ──────────────────────────────── */
+  --shadow-soft:     0 1px 3px rgba(43, 39, 36, 0.08);
+  --shadow-card:     0 4px 14px rgba(43, 39, 36, 0.10);
+  --shadow-pop:      0 8px 28px rgba(43, 39, 36, 0.16);
+
+  /* ── Typografie ─────────────────────────────────────────────────── */
+  --font-display:    'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --font-body:       'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono:       'JetBrains Mono', 'IBM Plex Mono', monospace;
+
+  /* Skala (modular, 1.250 – Major Third) */
+  --fs-xs:           0.81rem;
+  --fs-sm:           0.90rem;
+  --fs-base:         1.00rem;
+  --fs-md:           1.25rem;
+  --fs-lg:           1.56rem;
+  --fs-xl:           1.95rem;
+  --fs-2xl:          2.44rem;
+  --fs-3xl:          3.05rem;
+  --fs-display:      3.82rem;
+
+  --lh-tight:        1.15;
+  --lh-snug:         1.30;
+  --lh-normal:       1.55;
+  --lh-loose:        1.75;
+
+  /* Buchdruck-Feeds */
+  --tracking-display: -0.01em;
+  --tracking-caps:    0.14em;
+  --tracking-body:    0.005em;
+
+  /* ── Spacing (8px-Basis) ────────────────────────────────────────── */
+  --space-1:  0.25rem;
+  --space-2:  0.5rem;
+  --space-3:  0.75rem;
+  --space-4:  1rem;
+  --space-5:  1.5rem;
+  --space-6:  2rem;
+  --space-7:  3rem;
+  --space-8:  4rem;
+  --space-9:  6rem;
+
+  /* ── Layout ─────────────────────────────────────────────────────── */
+  --container-max:   1200px;
+  --container-narrow: 720px;
+  --radius-sm:       2px;
+  --radius-md:       4px;
+  --radius-pill:     999px;
+
+  /* ── Bewegung ───────────────────────────────────────────────────── */
+  --ease-paper:      cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-fast:   120ms;
+  --duration-base:   240ms;
+
+  /* ── OSM-Karten-Filter – Vintage/Paper-Vibe ─────────────────────── */
+  --map-filter:      sepia(0.32) saturate(0.78) brightness(1.02)
+                     contrast(0.92) hue-rotate(-8deg);
+}
+
+/* ── Prefers-reduced-motion ──────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+  }
+}

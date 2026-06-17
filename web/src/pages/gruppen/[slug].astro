@@ -1,0 +1,237 @@
+---
+import Base from '@layouts/Base.astro';
+import Map from '@components/Map.astro';
+import { t, localeFromPath, type Locale, localizedPath } from '@i18n/index';
+import { directusGet, assetUrl } from '@lib/directus';
+import { renderMarkdown } from '@lib/markdown';
+import type { Group } from '@lib/types';
+
+export async function getStaticPaths() {
+  // Alle veröffentlichten Gruppen für statische Pfade
+  const groups = await directusGet<{ data: Pick<Group, 'slug'>[] }>(
+    '/items/groups',
+    {
+      filter: JSON.stringify({ status: { _eq: 'published' } }),
+      fields: 'slug',
+      limit: '5000',
+    },
+  );
+  const slugs = (groups?.data ?? []).map((g) => g.slug);
+  return slugs.map((slug) => ({ params: { slug }, props: { slug } }));
+}
+
+const { slug } = Astro.props as { slug: string };
+const locale: Locale = localeFromPath(Astro.url.pathname);
+
+// Vollständige Gruppe laden
+const group = await directusGet<{ data: Group | null }>(
+  '/items/groups',
+  {
+    filter: JSON.stringify({ slug: { _eq: slug }, status: { _eq: 'published' } }),
+    single: '1',
+    fields: [
+      'id','slug','name','founded_year','website','email','phone','city','region','country',
+      'translations.*','images.*','contacts.*',
+    ].join(','),
+  },
+);
+
+if (!group?.data) {
+  return Astro.redirect('/404');
+}
+
+const g = group.data;
+const tr = g.translations?.find((t) => t.lang === locale) ?? g.translations?.[0];
+const heroImage = g.images?.find((i) => i.kind === 'hero' && i.is_primary)
+  ?? g.images?.find((i) => i.is_primary)
+  ?? g.images?.[0];
+
+const descriptionHtml = tr?.description_md ? renderMarkdown(tr.description_md) : '';
+const altText = locale === 'en' ? (heroImage?.alt_text_en ?? heroImage?.alt_text_de) : (heroImage?.alt_text_de ?? heroImage?.alt_text_en);
+---
+
+<Base title={g.name} description={tr?.description_md?.slice(0, 160) ?? g.name}
+      ogImage={heroImage ? assetUrl(heroImage.asset_id, { width: 1200 }) : undefined}>
+  <article class="group">
+    <div class="container">
+      <a href={localizedPath('', locale)} class="group__back">
+        {t('group.detail.back', locale)}
+      </a>
+
+      <header class="group__head">
+        <div class="group__head-text">
+          <span class="pill pill--accent">{g.country}{g.city ? ` · ${g.city}` : ''}</span>
+          <h1 class="group__name">{g.name}</h1>
+          {g.founded_year && (
+            <p class="group__founded">{t('group.detail.founded', locale, { year: g.founded_year })}</p>
+          )}
+        </div>
+      </header>
+
+      <div class="group__grid">
+        <div class="group__main">
+          {heroImage && (
+            <img
+              class="group__hero"
+              src={assetUrl(heroImage.asset_id, { width: 1000, quality: 80 })}
+              alt={altText ?? g.name}
+              loading="eager"
+            />
+          )}
+
+          {descriptionHtml && (
+            <section class="group__description prose" set:html={descriptionHtml} />
+          )}
+
+          {tr?.rehearsal_times && (
+            <section class="group__rehearsals card">
+              <h3>{t('group.detail.rehearsal', locale)}</h3>
+              <p>{tr.rehearsal_times}</p>
+            </section>
+          )}
+
+          {g.images && g.images.length > 1 && (
+            <section class="group__gallery">
+              {g.images.filter((i) => i !== heroImage).slice(0, 8).map((img) => (
+                <a href={assetUrl(img.asset_id)} target="_blank" rel="noopener">
+                  <img src={assetUrl(img.asset_id, { width: 400, quality: 70 })}
+                       alt={locale === 'en' ? (img.alt_text_en ?? img.alt_text_de ?? '') : (img.alt_text_de ?? '')}
+                       loading="lazy" />
+                </a>
+              ))}
+            </section>
+          )}
+        </div>
+
+        <aside class="group__aside">
+          <section class="card">
+            <h3>{t('group.detail.contact', locale)}</h3>
+            <ul class="contact-list">
+              {g.website && (
+                <li>
+                  <span class="contact-list__label">{t('map.tooltip.website', locale)}</span>
+                  <a href={g.website} target="_blank" rel="noopener">{g.website.replace(/^https?:\/\//, '')}</a>
+                </li>
+              )}
+              {g.email && (
+                <li>
+                  <span class="contact-list__label">{t('map.tooltip.email', locale)}</span>
+                  <a href={`mailto:${g.email}`}>{g.email}</a>
+                </li>
+              )}
+              {g.phone && (
+                <li>
+                  <span class="contact-list__label">{t('map.tooltip.phone', locale)}</span>
+                  <a href={`tel:${g.phone.replace(/[^+\d]/g, '')}`}>{g.phone}</a>
+                </li>
+              )}
+              {g.contacts?.map((c) => (
+                <li>
+                  <span class="contact-list__label">{c.label ?? c.type}</span>
+                  <a href={c.value} target="_blank" rel="noopener">{c.value.replace(/^https?:\/\//, '')}</a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </aside>
+      </div>
+
+      <section class="group__map">
+        <Map height="380px" singleGroupSlug={slug} />
+      </section>
+    </div>
+  </article>
+</Base>
+
+<style>
+  .group { padding-block: var(--space-7) var(--space-8); }
+  .group__back {
+    display: inline-block;
+    margin-bottom: var(--space-5);
+    font-size: var(--fs-sm);
+    color: var(--ink-secondary);
+    text-decoration: none;
+  }
+  .group__back:hover { color: var(--accent-wine); }
+
+  .group__head { margin-bottom: var(--space-6); }
+  .group__name {
+    font-size: var(--fs-3xl);
+    margin: var(--space-3) 0 var(--space-2);
+  }
+  .group__founded {
+    color: var(--ink-muted);
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+  }
+
+  .group__grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: var(--space-6);
+    margin-bottom: var(--space-7);
+  }
+
+  .group__hero {
+    width: 100%;
+    height: 380px;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-5);
+    border: 1px solid var(--line-hair);
+  }
+
+  .group__description {
+    font-size: var(--fs-md);
+    line-height: var(--lh-loose);
+    color: var(--ink-secondary);
+    margin-bottom: var(--space-5);
+  }
+  .group__description :global(h2),
+  .group__description :global(h3) {
+    font-family: var(--font-display);
+    color: var(--ink-primary);
+    margin-top: var(--space-5);
+    margin-bottom: var(--space-2);
+  }
+
+  .group__rehearsals h3 { margin-bottom: var(--space-2); color: var(--accent-forest); }
+
+  .group__gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+  }
+  .group__gallery img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line-hair);
+  }
+
+  .contact-list { list-style: none; padding: 0; margin: 0; }
+  .contact-list li {
+    margin-bottom: var(--space-3);
+    font-size: var(--fs-sm);
+  }
+  .contact-list__label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin-bottom: 2px;
+  }
+
+  .group__map {
+    border-top: 1px solid var(--line-hair);
+    padding-top: var(--space-6);
+  }
+
+  @media (max-width: 880px) {
+    .group__grid { grid-template-columns: 1fr; }
+  }
+</style>

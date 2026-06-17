@@ -1,0 +1,66 @@
+---
+/**
+ * Inline-SVG der Kompassrose (gleiche Asset-Quelle wie /compass-rose.svg,
+ * aber inline ohne Extra-Request + wählbare Größe/Opazität).
+ */
+interface Props {
+  size?: number;
+  opacity?: number;
+  class?: string;
+}
+const { size = 240, opacity = 1, class: className } = Astro.props;
+---
+
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 240 240"
+  width={size}
+  height={size}
+  class={className}
+  style={`opacity: ${opacity}`}
+  role="presentation"
+  aria-hidden="true"
+>
+  <g transform="translate(120 120)" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <circle r="115" stroke-width="1.4" />
+    <circle r="108" stroke-width="0.5" stroke-opacity="0.55" />
+    <circle r="98"  stroke-width="0.5" stroke-opacity="0.4" />
+
+    <g stroke-width="0.8">
+      <line x1="0" y1="-108" x2="0" y2="-98" />
+      <line x1="0" y1="-108" x2="0" y2="-100" transform="rotate(30)" stroke-opacity="0.5" />
+      <line x1="0" y1="-108" x2="0" y2="-100" transform="rotate(60)" stroke-opacity="0.5" />
+      <line x1="0" y1="-108" x2="0" y2="-98" transform="rotate(90)" />
+      <line x1="0" y1="-108" x2="0" y2="-100" transform="rotate(120)" stroke-opacity="0.5" />
+      <line x1="0" y1="-108" x2="0" y2="-100" transform="rotate(150)" stroke-opacity="0.5" />
+      <line x1="0" y1="-108" x2="0" y2="-98" transform="rotate(180)" />
+      <line x1="0" y1="-108" x2="0" y2="-100" transform="rotate(210)" stroke-opacity="0.5" />
+      <line x1="0" y1="-108" x2="0" y2="-100" transform="rotate(240)" stroke-opacity="0.5" />
+      <line x1="0" y1="-108" x2="0" y2="-98" transform="rotate(270)" />
+      <line x1="0" y1="-108" x2="0" y2="-100" transform="rotate(300)" stroke-opacity="0.5" />
+      <line x1="0" y1="-108" x2="0" y2="-100" transform="rotate(330)" stroke-opacity="0.5" />
+    </g>
+
+    <text x="0" y="-122" text-anchor="middle" font-family="Cormorant Garamond, serif" font-size="16" fill="currentColor" font-weight="600">N</text>
+    <text x="125" y="6" text-anchor="middle" font-family="Cormorant Garamond, serif" font-size="14" fill="currentColor">O</text>
+    <text x="0" y="135" text-anchor="middle" font-family="Cormorant Garamond, serif" font-size="14" fill="currentColor">S</text>
+    <text x="-125" y="6" text-anchor="middle" font-family="Cormorant Garamond, serif" font-size="14" fill="currentColor">W</text>
+
+    <g transform="rotate(45)" fill="var(--accent-gold)" stroke="var(--accent-gold)">
+      <polygon points="0,-78 5,0 0,78 -5,0" />
+    </g>
+    <g transform="rotate(135)" fill="var(--accent-gold)" stroke="var(--accent-gold)">
+      <polygon points="0,-78 5,0 0,78 -5,0" />
+    </g>
+
+    <polygon points="0,-110 9,0 0,110 -9,0" fill="currentColor" stroke="currentColor" />
+    <polygon points="0,-110 9,0 -9,0" fill="var(--accent-wine)" stroke="var(--accent-wine)" />
+
+    <g transform="rotate(90)" fill="var(--ink-secondary)" stroke="var(--ink-secondary)">
+      <polygon points="0,-78 5,0 0,78 -5,0" />
+    </g>
+
+    <circle r="6" fill="var(--paper-base)" stroke="currentColor" stroke-width="1" />
+    <circle r="2" fill="currentColor" />
+  </g>
+</svg>
