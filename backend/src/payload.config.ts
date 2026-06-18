@@ -88,10 +88,17 @@ export default buildConfig({
       connectionString: process.env.DATABASE_URL ??
         `postgresql://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.POSTGRES_HOST || 'db'}:${process.env.POSTGRES_PORT || '5432'}/${process.env.POSTGRES_DB}`,
     },
-    // Push-Mode: Schema wird automatisch gehalten (ohne explizite Migration).
-    // Für Produktion auf 'migrate' umstellen.
-    push: false,
-    prod: true,
+    // Schema-Sync-Modus:
+    //   push: true  → drizzle-kit push, hält Schema automatisch aktuell
+    //                 (funktioniert in dev UND prod, kein Migrations-Setup nötig)
+    //   prod: false → Payload führt keine Auto-Migrationen aus
+    //
+    // Für revisionssichere Produktions-Deployments später auf
+    //   push: false, prod: true
+    // umstellen und via `npx payload migrate:create` generierte
+    // Migrationen in src/migrations/ committen.
+    push: true,
+    prod: false,
   }),
 
   secret: process.env.PAYLOAD_SECRET || 'change-me-in-production-32-chars-min',
