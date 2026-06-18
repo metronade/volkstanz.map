@@ -5,10 +5,9 @@
   "private": true,
   "scripts": {
     "dev": "payload run",
-    "build": "payload build",
-    "start": "node dist/server.js",
+    "start": "tsx src/server.ts",
     "migrate": "payload migrate",
-    "seed": "node dist/seed.js"
+    "seed": "tsx src/seed.ts"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "^3.10.0",
@@ -16,7 +15,8 @@
     "otplib": "^12.0.1",
     "payload": "^3.10.0",
     "pg": "^8.13.1",
-    "sharp": "^0.33.5"
+    "sharp": "^0.33.5",
+    "tsx": "^4.19.2"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
