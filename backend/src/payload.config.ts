@@ -5,7 +5,7 @@
  * Control und Endpoints hier definiert. Änderungen → `payload migrate:create`
  * erzeugt eine neue Migration.
  */
-import { buildConfig } from 'payload/config';
+import { buildConfig } from 'payload';
 import { postgresAdapter } from '@payloadcms/db-postgres';
 import { lexicalEditor } from '@payloadcms/richtext-lexical';
 

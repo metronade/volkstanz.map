@@ -13,7 +13,7 @@
  *   rejected   — abgelehnt (mit Begründung)
  *   archived   — archiviert (Gruppe aufgelöst etc.)
  */
-import { CollectionConfig } from 'payload/types';
+import { CollectionConfig } from 'payload';
 import { snapGeo } from '../hooks/snap-geo';
 import { auditChange, auditDelete } from '../hooks/audit-change';
 import { isAdminOrModerator, isPublicRead } from '../access/groups';

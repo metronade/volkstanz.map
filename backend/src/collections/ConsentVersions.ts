@@ -5,7 +5,7 @@
  * Versionen bleiben für Audit-Zwecke erhalten. Groups referenzieren die
  * jeweils geltende Version bei Eintragung.
  */
-import { CollectionConfig } from 'payload/types';
+import { CollectionConfig } from 'payload';
 
 export const ConsentVersions: CollectionConfig = {
   slug: 'consent_versions',

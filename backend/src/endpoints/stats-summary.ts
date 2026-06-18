@@ -4,7 +4,7 @@
  * Aggregierte Statistiken für den Homepage-Hero:
  *   { groups, countries, regions }
  */
-import { Endpoint } from 'payload/config';
+import { Endpoint } from 'payload';
 import { rawQuery } from '../db/raw';
 
 export const statsSummaryEndpoint: Endpoint = {

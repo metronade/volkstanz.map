@@ -2,7 +2,7 @@
  * Content — Statische UI-Texte (Headlines, Buttons, Labels).
  * Übersetzung in ContentTranslations.
  */
-import { CollectionConfig } from 'payload/types';
+import { CollectionConfig } from 'payload';
 
 export const Content: CollectionConfig = {
   slug: 'content',

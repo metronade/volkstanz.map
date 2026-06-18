@@ -10,7 +10,7 @@
  *   - Public-Create nur via /submit-group-Endpoint (der das Setzen von
  *     status=pending und die Consent-Referenzen erzwingt)
  */
-import { Access } from 'payload/types';
+import { Access } from 'payload';
 
 export const isPublicRead: Access = ({ req: { user }, id, query }) => {
   // Eingeloggter User → alles sehen

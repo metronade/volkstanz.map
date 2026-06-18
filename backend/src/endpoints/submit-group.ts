@@ -9,7 +9,7 @@
  * - Bild-Upload erfolgt vorab via /api/media, dann asset_id übergeben
  * - Audit-Log-Eintrag mit actorType='submitter'
  */
-import { Endpoint } from 'payload/config';
+import { Endpoint } from 'payload';
 import { sha256, ipPrefix, getIpFromRequest, getUaFromRequest } from '../hooks/anonymize-ip';
 
 interface SubmissionBody {

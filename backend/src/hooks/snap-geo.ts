@@ -5,7 +5,7 @@
  * Der /public-coords-Endpoint liest nur daraus, so dass rohe Koordinaten
  * niemals der Öffentlichkeit ausgesetzt werden.
  */
-import type { CollectionAfterChangeHook } from 'payload/types';
+import type { CollectionAfterChangeHook } from 'payload';
 import { rawQuery } from '../db/raw';
 
 const SNAP_GRID: Record<string, number> = {

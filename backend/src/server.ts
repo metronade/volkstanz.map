@@ -1,16 +1,16 @@
 /**
- * Einstiegspunkt für die Payload-Payload-Applikation (Standalone-Server).
- * Lauscht auf 0.0.0.0:3000, Proxy-Header (X-Forwarded-*) werden vertraut.
+ * Einstiegspunkt für die Payload-Applikation (Standalone-Server).
+ * Lauscht auf 0.0.0.0:3000.
+ *
+ * Importiert das Config-Objekt direkt (statt als Pfad) — funktioniert
+ * sowohl im dev-Modus (src/*.ts via tsx) als auch nach `payload build`
+ * (dist/*.js), ohne dass wir den File-Pfad dynamisch auflösen müssen.
  */
-import express from 'payload';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import payload from 'payload';
+import config from './payload.config';
 
 const start = async () => {
-  const root = fileURLToPath(new URL('.', import.meta.url));
-  await express.start({
-    config: path.resolve(root, './payload.config.ts'),
-  });
+  await payload.start({ config });
 };
 
 start().catch((err) => {

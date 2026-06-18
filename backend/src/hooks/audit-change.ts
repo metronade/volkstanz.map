@@ -5,7 +5,7 @@
  * IP wird anonymisiert als SHA-256-Hash + Prefix gespeichert.
  * User-Agent ebenfalls gehasht.
  */
-import type { CollectionAfterChangeHook, CollectionAfterDeleteHook } from 'payload/types';
+import type { CollectionAfterChangeHook, CollectionAfterDeleteHook } from 'payload';
 import { sha256, ipPrefix, getIpFromRequest, getUaFromRequest } from './anonymize-ip';
 
 function mapAction(op: 'create' | 'update' | 'delete' | string | undefined,

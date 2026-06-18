@@ -4,7 +4,7 @@
  * robots.txt und sitemap.xml werden aus dieser Collection dynamisch
  * generiert (siehe endpoints/robots.ts und endpoints/sitemap.ts).
  */
-import { CollectionConfig } from 'payload/types';
+import { CollectionConfig } from 'payload';
 
 export const SeoSettings: CollectionConfig = {
   slug: 'seo_settings',

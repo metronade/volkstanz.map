@@ -5,7 +5,7 @@
  * TOTP: Secret wird verschlüsselt in `totp_secret` gespeichert,
  *       aktiviert via `totp_enabled`.
  */
-import { CollectionConfig } from 'payload/types';
+import { CollectionConfig } from 'payload';
 
 export const Users: CollectionConfig = {
   slug: 'users',

@@ -4,7 +4,7 @@
  * Liefert die robots.txt aus der seo_settings-Collection.
  * Fallback: sicheres Standard-Set.
  */
-import { Endpoint } from 'payload/config';
+import { Endpoint } from 'payload';
 
 const FALLBACK = `User-agent: *
 Disallow: /admin

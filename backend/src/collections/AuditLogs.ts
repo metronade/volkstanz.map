@@ -5,7 +5,7 @@
  * Groups/Content/SeoSettings geschrieben. Public-Submissions schreiben
  * beim submit-Endpoint manuell.
  */
-import { CollectionConfig } from 'payload/types';
+import { CollectionConfig } from 'payload';
 
 export const AuditLogs: CollectionConfig = {
   slug: 'audit_logs',

@@ -4,7 +4,7 @@
  * Generiert sitemap.xml aus statischen Pfaden + allen veröffentlichten
  * Gruppen. Berücksichtigt seo_settings.sitemap_include_all (für /en/*).
  */
-import { Endpoint } from 'payload/config';
+import { Endpoint } from 'payload';
 
 const STATIC_PATHS = ['', 'was-ist', 'gruppe-eintragen', 'impressum', 'datenschutz'];
 

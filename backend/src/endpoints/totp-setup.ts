@@ -10,9 +10,9 @@
  *   POST /totp/disable    — deaktiviert TOTP
  *   POST /totp/login-step2 — nimmt Email/Pwd/TOTP-Token entgegen
  */
-import { Endpoint } from 'payload/config';
+import { Endpoint } from 'payload';
 import { authenticator } from 'otplib';
-import { PayloadRequest } from 'payload/types';
+import { PayloadRequest } from 'payload';
 
 function requireUser(req: PayloadRequest): boolean {
   return Boolean(req.user);

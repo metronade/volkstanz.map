@@ -5,7 +5,7 @@
  * gerundeten PUBLIC-Koordinaten (siehe snap-geo Hook). Raw-Koordinaten
  * bleiben server-seitig.
  */
-import { Endpoint } from 'payload/config';
+import { Endpoint } from 'payload';
 import { rawQuery } from '../db/raw';
 
 export const publicCoordsEndpoint: Endpoint = {
