@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "payload run",
-    "start": "tsx src/server.ts",
+    "start": "payload run",
     "migrate": "payload migrate",
     "seed": "tsx src/seed.ts"
   },
