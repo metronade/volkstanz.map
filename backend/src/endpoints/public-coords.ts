@@ -6,22 +6,22 @@
  * bleiben server-seitig.
  */
 import { Endpoint } from 'payload/config';
+import { rawQuery } from '../db/raw';
 
 export const publicCoordsEndpoint: Endpoint = {
   path: '/public-coords',
   method: 'get',
   handler: async (req, res) => {
     try {
-      const rows = await req.payload.db.drizzle.db.execute({
-        sql: `
-          SELECT g.id, gg.lat, gg.lng
-          FROM groups g
-          JOIN groups_geom_public gg ON gg.group_id = g.id
-          WHERE g.status = 'published'
-          ORDER BY g.published_at DESC;
-        `,
-      });
-      res.status(200).json({ data: rows.rows });
+      const rows = await rawQuery<{ id: number; lat: number; lng: number }>(
+        req.payload,
+        `SELECT g.id, gg.lat, gg.lng
+         FROM groups g
+         JOIN groups_geom_public gg ON gg.group_id = g.id
+         WHERE g.status = 'published'
+         ORDER BY g.published_at DESC NULLS LAST`,
+      );
+      res.status(200).json({ data: rows });
     } catch (err) {
       req.payload.logger.error('[public-coords] failed:', err);
       res.status(500).json({ error: 'internal' });

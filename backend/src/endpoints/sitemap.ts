@@ -18,8 +18,9 @@ export const sitemapEndpoint: Endpoint = {
   method: 'get',
   handler: async (req, res) => {
     // Base-URL aus Site-URL-Header (vom Router) oder env
-    const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || '';
-    const proto = (req.headers.get('x-forwarded-proto') as string) || 'http';
+    const headers = req.headers as Record<string, string | string[] | undefined>;
+    const host = headers['x-forwarded-host'] || headers['host'] || '';
+    const proto = (Array.isArray(headers['x-forwarded-proto']) ? headers['x-forwarded-proto'][0] : headers['x-forwarded-proto']) || 'http';
     const baseUrl = (process.env.SITE_URL || (host ? `${proto}://${host}` : '')).replace(/\/$/, '');
 
     let includeAll = true;

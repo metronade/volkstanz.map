@@ -5,7 +5,8 @@
  * Der /public-coords-Endpoint liest nur daraus, so dass rohe Koordinaten
  * niemals der Öffentlichkeit ausgesetzt werden.
  */
-import { FieldHook } from 'payload/types';
+import type { CollectionAfterChangeHook } from 'payload/types';
+import { rawQuery } from '../db/raw';
 
 const SNAP_GRID: Record<string, number> = {
   exact:        0.001,   // ~100 m
@@ -14,36 +15,34 @@ const SNAP_GRID: Record<string, number> = {
   region:       0.1,     // ~10 km
 };
 
-export const snapGeo: FieldHook = async ({ data, operation, originalDoc, req }) => {
-  if (operation !== 'create' && operation !== 'update') return data;
-  if (!data?.lat || !data?.lng) return data;
+export const snapGeo: CollectionAfterChangeHook = async ({ req, operation, doc }) => {
+  if (operation !== 'create' && operation !== 'update') return doc;
 
-  const privacyLevel = data.privacy_level || 'neighborhood';
+  const lat = doc?.lat;
+  const lng = doc?.lng;
+  if (lat == null || lng == null) return doc;
+
+  const privacyLevel = (doc.privacy_level as string) || 'neighborhood';
   const grid = SNAP_GRID[privacyLevel] ?? SNAP_GRID.neighborhood;
 
-  const publicLat = Math.round(data.lat / grid) * grid;
-  const publicLng = Math.round(data.lng / grid) * grid;
+  const publicLat = Math.round(lat / grid) * grid;
+  const publicLng = Math.round(lng / grid) * grid;
 
-  // In eine separate Tabelle schreiben (wird von Migration angelegt)
   try {
-    const { db } = req.payload.db.drizzle;
-    const id = data.id || originalDoc?.id;
-    if (id) {
-      await db.execute({
-        sql: `
-          INSERT INTO groups_geom_public (group_id, lat, lng, privacy_level)
-          VALUES ($1, $2, $3, $4)
-          ON CONFLICT (group_id) DO UPDATE SET
-            lat = EXCLUDED.lat,
-            lng = EXCLUDED.lng,
-            privacy_level = EXCLUDED.privacy_level;
-        `,
-        params: [id, publicLat, publicLng, privacyLevel],
-      });
-    }
+    await rawQuery(
+      req.payload,
+      `INSERT INTO groups_geom_public (group_id, lat, lng, privacy_level)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (group_id) DO UPDATE SET
+         lat = EXCLUDED.lat,
+         lng = EXCLUDED.lng,
+         privacy_level = EXCLUDED.privacy_level,
+         updated_at = now();`,
+      [doc.id, publicLat, publicLng, privacyLevel],
+    );
   } catch (err) {
     req.payload.logger.error('[snap-geo] failed to write geom_public:', err);
   }
 
-  return data;
+  return doc;
 };

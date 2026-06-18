@@ -5,59 +5,67 @@
  * IP wird anonymisiert als SHA-256-Hash + Prefix gespeichert.
  * User-Agent ebenfalls gehasht.
  */
-import { FieldHook } from 'payload/types';
-import { createHash } from 'node:crypto';
+import type { CollectionAfterChangeHook, CollectionAfterDeleteHook } from 'payload/types';
+import { sha256, ipPrefix, getIpFromRequest, getUaFromRequest } from './anonymize-ip';
 
-function sha256(input: string): string {
-  const salt = new Date().toISOString().slice(0, 10); // täglich wechselnd
-  return createHash('sha256').update(input + ':' + salt).digest('hex');
+function mapAction(op: 'create' | 'update' | 'delete' | string | undefined,
+                   doc: any): string {
+  if (doc?.status === 'published' && op === 'update') return 'publish';
+  if (doc?.status === 'rejected' && op === 'update') return 'reject';
+  if (op === 'create') return 'create';
+  if (op === 'delete') return 'delete';
+  return op || 'update';
 }
 
-function ipPrefix(ip: string): string {
-  if (!ip) return 'unknown';
-  if (ip.includes(':')) {
-    const parts = ip.split(':');
-    return parts.slice(0, 3).join(':') + '::/48';
-  }
-  const parts = ip.split('.');
-  if (parts.length === 4) return `${parts.slice(0, 3).join('.')}.x/24`;
-  return 'unknown';
+async function writeAudit(
+  req: any,
+  entityType: string,
+  operation: string,
+  doc: any,
+  originalDoc?: any,
+): Promise<void> {
+  if (!req?.payload) return;
+
+  const ip = getIpFromRequest(req);
+  const ua = getUaFromRequest(req);
+
+  await req.payload.create({
+    collection: 'audit_logs',
+    overrideAccess: true,
+    data: {
+      ts: new Date().toISOString(),
+      actorType: req.user ? 'admin' : 'system',
+      actor_id: req.user?.id ? String(req.user.id) : undefined,
+      action: mapAction(operation, doc),
+      entityType,
+      entityId: doc?.id != null ? String(doc.id) : undefined,
+      ipHash: ip ? sha256(ip) : undefined,
+      ipPrefix: ipPrefix(ip),
+      uaHash: ua ? sha256(ua) : undefined,
+      diff: { before: originalDoc ?? null, after: doc ?? null },
+      reason: doc?.rejection_reason || undefined,
+    },
+  });
 }
 
 export const auditChange =
-  (entityType: string): FieldHook =>
-  async ({ req, operation, data, originalDoc, result }) => {
-    const doc = result || data || originalDoc;
-    const id = doc?.id;
-
-    const ip = req.headers.get('x-forwarded-for') || req.socket?.remoteAddress || '';
-    const ua = req.headers.get('user-agent') || '';
-
-    await req.payload.create({
-      collection: 'audit_logs',
-      data: {
-        ts: new Date().toISOString(),
-        actorType: req.user ? 'admin' : 'system',
-        actor_id: req.user?.id ? String(req.user.id) : undefined,
-        action: mapOperation(operation),
-        entityType,
-        entityId: id ? String(id) : undefined,
-        ipHash: ip ? sha256(ip) : undefined,
-        ipPrefix: ipPrefix(ip),
-        uaHash: ua ? sha256(ua) : undefined,
-        diff: { before: originalDoc ?? null, after: doc ?? null },
-        reason: doc?.rejection_reason || undefined,
-      },
-      overrideAccess: true,
-    });
+  (entityType: string): CollectionAfterChangeHook =>
+  async ({ req, operation, doc, previousDoc }) => {
+    try {
+      await writeAudit(req, entityType, operation, doc, previousDoc);
+    } catch (err) {
+      req.payload.logger.error('[audit-change] failed:', err);
+    }
     return doc;
   };
 
-function mapOperation(op: string | undefined): string {
-  switch (op) {
-    case 'create': return 'create';
-    case 'update': return 'update';
-    case 'delete': return 'delete';
-    default: return op || 'update';
-  }
-}
+export const auditDelete =
+  (entityType: string): CollectionAfterDeleteHook =>
+  async ({ req, doc }) => {
+    try {
+      await writeAudit(req, entityType, 'delete', doc);
+    } catch (err) {
+      req.payload.logger.error('[audit-delete] failed:', err);
+    }
+    return doc;
+  };

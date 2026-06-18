@@ -37,12 +37,6 @@ export const Users: CollectionConfig = {
       required: true,
     },
     {
-      name: 'email',
-      type: 'email',
-      required: true,
-      unique: true,
-    },
-    {
       name: 'role',
       type: 'select',
       required: true,

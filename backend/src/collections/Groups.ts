@@ -15,7 +15,7 @@
  */
 import { CollectionConfig } from 'payload/types';
 import { snapGeo } from '../hooks/snap-geo';
-import { auditChange } from '../hooks/audit-change';
+import { auditChange, auditDelete } from '../hooks/audit-change';
 import { isAdminOrModerator, isPublicRead } from '../access/groups';
 
 export const Groups: CollectionConfig = {
@@ -245,5 +245,6 @@ export const Groups: CollectionConfig = {
   ],
   hooks: {
     afterChange: [snapGeo, auditChange('groups')],
+    afterDelete: [auditDelete('groups')],
   },
 };

@@ -23,6 +23,7 @@ const result = await payloadGet<PayloadResult<Group>>('/api/groups', {
     { status: { equals: 'published' } },
   ]}),
   limit: '1',
+  depth: '2',
 });
 
 const g = result?.docs?.[0];

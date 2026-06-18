@@ -20,6 +20,7 @@ export const GET: APIRoute = async ({ url }) => {
     payloadGet<PayloadResult<Group>>('/api/groups', {
       where: JSON.stringify(where),
       limit: '1000',
+      depth: '1',
     }),
     payloadGet<{ data: Array<{ id: number; lat: number; lng: number }> }>('/api/public-coords'),
   ]);
