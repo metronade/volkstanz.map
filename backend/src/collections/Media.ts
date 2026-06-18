@@ -8,6 +8,7 @@ export const Media: CollectionConfig = {
   upload: {
     staticURL: '/storage',
     staticDir: '../storage',
+    useLocalStorage: true,
     imageSizes: [
       { name: 'thumb',    width: 200,  height: 200, position: 'centre' },
       { name: 'card',     width: 600,  height: 450, position: 'centre' },

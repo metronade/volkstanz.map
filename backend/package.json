@@ -13,7 +13,6 @@
   "dependencies": {
     "@payloadcms/db-postgres": "^3.10.0",
     "@payloadcms/richtext-lexical": "^3.10.0",
-    "@payloadcms/storage-local": "^3.10.0",
     "otplib": "^12.0.1",
     "payload": "^3.10.0",
     "pg": "^8.13.1",

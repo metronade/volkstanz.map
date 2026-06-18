@@ -8,8 +8,6 @@
 import { buildConfig } from 'payload/config';
 import { postgresAdapter } from '@payloadcms/db-postgres';
 import { lexicalEditor } from '@payloadcms/richtext-lexical';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import { Users } from './collections/Users';
 import { Groups } from './collections/Groups';
@@ -27,8 +25,6 @@ import { sitemapEndpoint } from './endpoints/sitemap';
 import { totpSetupEndpoint, totpVerifyEndpoint, totpDisableEndpoint } from './endpoints/totp-setup';
 
 import { runSeed } from './seed';
-
-const root = fileURLToPath(new URL('.', import.meta.url));
 
 export default buildConfig({
   admin: {
@@ -74,12 +70,7 @@ export default buildConfig({
     totpDisableEndpoint,
   ],
 
-  // Lokale File-Storage für Medien-Uploads
-  upload: {
-    useLocalStorage: true,
-    staticURL: '/storage',
-    staticDir: path.resolve(root, '../storage'),
-  },
+  // File-Storage ist auf Collection-Ebene konfiguriert (siehe Media.ts).
 
   editor: lexicalEditor(),
 
