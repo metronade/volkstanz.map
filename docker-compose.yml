@@ -35,7 +35,10 @@ services:
       db:
         condition: service_healthy
     environment:
-      NODE_ENV: production
+      # development, damit Payload's drizzle-push läuft (ist in Payload 3 an
+      # NODE_ENV !== 'production' gebunden). Für echtes Prod-Deployment später
+      # auf 'production' umstellen + committete Migrationen via payload migrate.
+      NODE_ENV: development
 
       # Postgres
       POSTGRES_USER: ${POSTGRES_USER}

@@ -8,6 +8,7 @@
 import { buildConfig } from 'payload';
 import { postgresAdapter } from '@payloadcms/db-postgres';
 import { lexicalEditor } from '@payloadcms/richtext-lexical';
+import sharp from 'sharp';
 
 import { Users } from './collections/Users';
 import { Groups } from './collections/Groups';
@@ -34,6 +35,10 @@ export default buildConfig({
       api: '/api',
     },
   },
+
+  // Sharp-Instanz explizit übergeben — Payload 3.x erkennt sie sonst nicht
+  // automatisch (besonders unter Alpine). Behebt die "sharp not installed"-Warnung.
+  sharp,
 
   routes: {
     admin: '/admin',
