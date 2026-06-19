@@ -24,8 +24,6 @@ import { robotsEndpoint } from './endpoints/robots';
 import { sitemapEndpoint } from './endpoints/sitemap';
 import { totpSetupEndpoint, totpVerifyEndpoint, totpDisableEndpoint } from './endpoints/totp-setup';
 
-import { runSeed } from './seed';
-
 export default buildConfig({
   admin: {
     user: 'users',
@@ -97,7 +95,7 @@ export default buildConfig({
   cors: [],
   csrf: [],
 
-  // Beim ersten Start: Consent v1, SEO-Singleton, initialer Admin.
-  // Idempotent — alle Seeds prüfen vorher, ob schon vorhanden.
-  onInit: runSeed,
+  // Seed wird NICHT über onInit ausgeführt, weil onInit vor dem Schema-Push
+  // läuft und dann die Tabellen noch nicht existieren. Stattdessen explizit
+  // in server.ts nach getPayload() aufrufen.
 });
