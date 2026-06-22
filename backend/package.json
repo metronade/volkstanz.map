@@ -1,28 +1,37 @@
 {
   "name": "volkstanz-backend",
   "version": "0.1.0",
-  "type": "module",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "start": "tsx src/server.ts",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "node --import=tsx ./node_modules/.bin/next start",
+    "generate:importmap": "payload generate:importmap",
+    "generate:types": "payload generate:types",
     "migrate": "payload migrate",
+    "migrate:create": "payload migrate:create",
     "seed": "tsx src/seed.ts"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "^3.10.0",
+    "@payloadcms/next": "^3.10.0",
     "@payloadcms/richtext-lexical": "^3.10.0",
-    "express": "^4.21.0",
+    "next": "15.4.11",
+    "graphql": "^16.10.0",
     "otplib": "^12.0.1",
     "payload": "^3.10.0",
     "pg": "^8.13.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "sharp": "^0.33.5",
     "tsx": "^4.19.2"
   },
   "devDependencies": {
-    "@types/express": "^5.0.0",
     "@types/node": "^22.10.0",
     "@types/pg": "^8.11.10",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
     "typescript": "^5.7.2"
   }
 }

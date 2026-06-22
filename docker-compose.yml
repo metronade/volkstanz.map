@@ -29,16 +29,22 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        # basePath für Next.js — wird in den Build gebaked. Ändert sich
+        # ADMIN_PATH, muss das Image neu gebaut werden (Compose macht das
+        # automatisch, wenn sich das Arg ändert).
+        NEXT_BASE_PATH: ${ADMIN_PATH}
     container_name: volkstanz-cms
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
-      # development, damit Payload's drizzle-push läuft (ist in Payload 3 an
-      # NODE_ENV !== 'production' gebunden). Für echtes Prod-Deployment später
-      # auf 'production' umstellen + committete Migrationen via payload migrate.
-      NODE_ENV: development
+      # Production-Modus. Next.js startet den optimierten standalone-Build.
+      # Schema-Setup läuft über committete Migrationen (prod: true im Adapter),
+      # nicht über drizzle-kit push. NODE_ENV=production wird auch vom
+      # Next.js-Runtime-Image vorausgesetzt.
+      NODE_ENV: production
 
       # Postgres
       POSTGRES_USER: ${POSTGRES_USER}

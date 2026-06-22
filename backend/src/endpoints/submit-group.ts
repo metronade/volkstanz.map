@@ -9,7 +9,7 @@
  * - Bild-Upload erfolgt vorab via /api/media, dann asset_id übergeben
  * - Audit-Log-Eintrag mit actorType='submitter'
  */
-import { Endpoint } from 'payload';
+import type { Endpoint } from 'payload';
 import { sha256, ipPrefix, getIpFromRequest, getUaFromRequest } from '../hooks/anonymize-ip';
 
 interface SubmissionBody {
@@ -38,19 +38,19 @@ interface SubmissionBody {
 export const submitGroupEndpoint: Endpoint = {
   path: '/submit-group',
   method: 'post',
-  handler: async (req, res) => {
+  handler: async (req) => {
     let body: SubmissionBody;
     try {
-      body = req.body as SubmissionBody;
+      body = (await req.json()) as SubmissionBody;
     } catch {
-      return res.status(400).json({ error: 'invalid_body' });
+      return Response.json({ error: 'invalid_body' }, { status: 400 });
     }
 
     // Pflichtfelder
     const required = ['name', 'lat', 'lng', 'consent_tos', 'consent_privacy', 'consent_kug'];
     for (const k of required) {
       if (body[k as keyof SubmissionBody] === undefined || body[k as keyof SubmissionBody] === '') {
-        return res.status(422).json({ error: 'missing_field', field: k });
+        return Response.json({ error: 'missing_field', field: k }, { status: 422 });
       }
     }
 
@@ -60,11 +60,11 @@ export const submitGroupEndpoint: Endpoint = {
       body.lat < -90 || body.lat > 90 ||
       body.lng < -180 || body.lng > 180
     ) {
-      return res.status(422).json({ error: 'invalid_coordinates' });
+      return Response.json({ error: 'invalid_coordinates' }, { status: 422 });
     }
     const validLevels = ['exact', 'neighborhood', 'city', 'region'];
     if (body.privacy_level && !validLevels.includes(body.privacy_level)) {
-      return res.status(422).json({ error: 'invalid_privacy_level' });
+      return Response.json({ error: 'invalid_privacy_level' }, { status: 422 });
     }
 
     const ip = getIpFromRequest(req);
@@ -134,13 +134,13 @@ export const submitGroupEndpoint: Endpoint = {
         },
       });
 
-      res.status(201).json({ id: created.id, slug: created.slug, status: 'pending' });
+      return Response.json({ id: created.id, slug: created.slug, status: 'pending' }, { status: 201 });
     } catch (err: any) {
       req.payload.logger.error('[submit-group] failed:', err);
       if (err?.code === '23505') {
-        return res.status(409).json({ error: 'slug_taken' });
+        return Response.json({ error: 'slug_taken' }, { status: 409 });
       }
-      res.status(500).json({ error: 'internal' });
+      return Response.json({ error: 'internal' }, { status: 500 });
     }
   },
 };

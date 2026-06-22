@@ -34,6 +34,11 @@ server {
     listen 80;
     server_name _;
 
+    # Relative Redirects — sonst strippt Nginx den Port aus dem Location-
+    # Header (8097 → 80), was den Browser/Curl auf den falschen Port schickt.
+    # Passiert z.B. beim 301 von /verwaltung → /verwaltung/.
+    absolute_redirect off;
+
     # Real-IP vom externen NPM weiterreichen
     set_real_ip_from 10.0.0.0/8;
     set_real_ip_from 172.16.0.0/12;
@@ -42,15 +47,14 @@ server {
 
     # ───────────────────────────────────────────────────────────────────
     # ${ADMIN_PATH}/* → Payload CMS
-    # WICHTIG: Nginx stripped den ${ADMIN_PATH}-Prefix VOR dem Forwarding.
-    # Grund: Payload 3 mountet seine Routen stur unter /admin und /api,
-    # unabhängig von SERVER_URL. SERVER_URL beeinflusst nur die
-    # URL-Generierung in Responses (z. B. Asset-Links), nicht das
-    # Routing. Ohne den Rewrite bekommt Payload /${ADMIN_PATH}/admin
-    # und antwortet 404.
+    # Kein Prefix-Strip mehr — Next.js bekommt ${ADMIN_PATH} als basePath
+    # (build-time via Compose-Arg) und routet selbst. Asset-URLs
+    # (/_next/...), API-Calls (/api/...) und Admin-Links (/admin/...)
+    # werden dadurch alle unter ${ADMIN_PATH}/... erzeugt und landen nicht
+    # beim Astro-Frontend.
+    # proxy_pass OHNE Trailing-Slash → URI wird unverändert weitergereicht.
     # ───────────────────────────────────────────────────────────────────
     location ${ADMIN_PATH}/ {
-        rewrite ^${ADMIN_PATH}/(.*)$ /$1 break;
         proxy_pass         http://vt_cms;
         proxy_http_version 1.1;
         proxy_set_header   Host              $host;
@@ -62,9 +66,10 @@ server {
         proxy_read_timeout 300s;
     }
 
-    # Ein exakter Treffer auf den Pfad (ohne Slash) → Weiterleitung
+    # Ein exakter Treffer auf den Pfad (ohne Slash) → Dashboard.
+    # Next.js hat keine Root-Page unter basePath, also direkt auf /admin.
     location = ${ADMIN_PATH} {
-        return 301 ${ADMIN_PATH}/;
+        return 301 ${ADMIN_PATH}/admin;
     }
 
     # ───────────────────────────────────────────────────────────────────

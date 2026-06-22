@@ -5,13 +5,13 @@
  * gerundeten PUBLIC-Koordinaten (siehe snap-geo Hook). Raw-Koordinaten
  * bleiben server-seitig.
  */
-import { Endpoint } from 'payload';
+import type { Endpoint } from 'payload';
 import { rawQuery } from '../db/raw';
 
 export const publicCoordsEndpoint: Endpoint = {
   path: '/public-coords',
   method: 'get',
-  handler: async (req, res) => {
+  handler: async (req) => {
     try {
       const rows = await rawQuery<{ id: number; lat: number; lng: number }>(
         req.payload,
@@ -21,10 +21,10 @@ export const publicCoordsEndpoint: Endpoint = {
          WHERE g.status = 'published'
          ORDER BY g.published_at DESC NULLS LAST`,
       );
-      res.status(200).json({ data: rows });
+      return Response.json({ data: rows });
     } catch (err) {
       req.payload.logger.error('[public-coords] failed:', err);
-      res.status(500).json({ error: 'internal' });
+      return Response.json({ error: 'internal' }, { status: 500 });
     }
   },
 };

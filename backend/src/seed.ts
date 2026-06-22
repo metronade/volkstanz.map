@@ -2,8 +2,9 @@
  * Seed — legt initiale Consent-Versionen, SEO-Singleton und optional
  * einen ersten Admin-User an.
  *
- * Wird automatisch via `onInit` in payload.config.ts beim ersten Start
- * ausgeführt. Aufruf von Kommandozeile: `npm run seed`.
+ * Wird automatisch via `onInit` in payload.config.ts beim Startup
+ * ausgeführt (idempotent, d. h. bei jedem Start sicher). Aufruf von
+ * Kommandozeile für expliziten Re-Seed: `npm run seed`.
  */
 import type { Payload } from 'payload';
 

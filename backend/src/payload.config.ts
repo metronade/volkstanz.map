@@ -82,25 +82,32 @@ export default buildConfig({
       connectionString: process.env.DATABASE_URL ??
         `postgresql://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.POSTGRES_HOST || 'db'}:${process.env.POSTGRES_PORT || '5432'}/${process.env.POSTGRES_DB}`,
     },
-    // Schema-Sync-Modus:
-    //   push: true  → drizzle-kit push, hält Schema automatisch aktuell
-    //                 (funktioniert in dev UND prod, kein Migrations-Setup nötig)
-    //   prod: false → Payload führt keine Auto-Migrationen aus
+    // Schema-Sync-Modus (Production):
+    //   push: false → KEIN drizzle-kit push (würde in nicht-interaktiver
+    //                 Umgebung an Konfirmations-Prompts hängen; zudem ist
+    //                 Push für Dev-Zwecke gedacht, nicht für Prod)
+    //   prod: true  → Payload wendet committete Migrationen in src/migrations/
+    //                 automatisch beim Startup an (via `payload migrate`,
+    //                 das Next.js-Payload-Plugin triggert)
     //
-    // Für revisionssichere Produktions-Deployments später auf
-    //   push: false, prod: true
-    // umstellen und via `npx payload migrate:create` generierte
-    // Migrationen in src/migrations/ committen.
-    push: true,
-    prod: false,
+    // tablesFilter schließt Tabellen aus, die nicht von Payload verwaltet
+    // werden, aber im selben Schema liegen (PostGIS-Systemtabellen, eigene
+    // Hilfstabellen). Wichtig sowohl für migrate:create (Schema-Diff) als
+    // auch für eventuelle Dev-Push-Versuche.
+    tablesFilter: [
+      '!spatial_ref_sys',       // PostGIS-Systemtabelle (SRIDs)
+      '!groups_geom_public',    // eigene Hilfstabelle (snap-geo Hook)
+      '!geography_columns',     // PostGIS-View
+      '!geometry_columns',      // PostGIS-View
+      '!raster_columns',        // PostGIS-View (falls raster ext aktiv)
+      '!raster_overviews',      // PostGIS-View
+    ],
+    push: false,
+    prod: true,
   }),
 
   secret: process.env.PAYLOAD_SECRET || 'change-me-in-production-32-chars-min',
 
   cors: [],
   csrf: [],
-
-  // Seed wird NICHT über onInit ausgeführt, weil onInit vor dem Schema-Push
-  // läuft und dann die Tabellen noch nicht existieren. Stattdessen explizit
-  // in server.ts nach getPayload() aufrufen.
 });

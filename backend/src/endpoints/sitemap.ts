@@ -4,7 +4,7 @@
  * Generiert sitemap.xml aus statischen Pfaden + allen veröffentlichten
  * Gruppen. Berücksichtigt seo_settings.sitemap_include_all (für /en/*).
  */
-import { Endpoint } from 'payload';
+import type { Endpoint } from 'payload';
 
 const STATIC_PATHS = ['', 'was-ist', 'gruppe-eintragen', 'impressum', 'datenschutz'];
 
@@ -16,11 +16,10 @@ function escapeXml(s: string): string {
 export const sitemapEndpoint: Endpoint = {
   path: '/sitemap',
   method: 'get',
-  handler: async (req, res) => {
-    // Base-URL aus Site-URL-Header (vom Router) oder env
-    const headers = req.headers as Record<string, string | string[] | undefined>;
-    const host = headers['x-forwarded-host'] || headers['host'] || '';
-    const proto = (Array.isArray(headers['x-forwarded-proto']) ? headers['x-forwarded-proto'][0] : headers['x-forwarded-proto']) || 'http';
+  handler: async (req) => {
+    const headers = req.headers;
+    const host = headers.get('x-forwarded-host') || headers.get('host') || '';
+    const proto = headers.get('x-forwarded-proto') || 'http';
     const baseUrl = (process.env.SITE_URL || (host ? `${proto}://${host}` : '')).replace(/\/$/, '');
 
     let includeAll = true;
@@ -61,7 +60,8 @@ ${urls.map((u) => `  <url><loc>${escapeXml(u)}</loc><lastmod>${lastmod}</lastmod
 </urlset>
 `;
 
-    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-    res.status(200).send(xml);
+    return new Response(xml, {
+      headers: { 'Content-Type': 'application/xml; charset=utf-8' },
+    });
   },
 };
